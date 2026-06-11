@@ -1,2 +1,5 @@
-# etash
-Etash is an open-source Customer Feedback Management software similar to Canny
+# Etash
+
+Open-source customer feedback management. Self-host for free or use our managed hosting.
+
+*Etash (Sanskrit: luminous, brilliant) — surface your brightest ideas.*
