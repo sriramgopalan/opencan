@@ -1,0 +1,276 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# All gate jobs run in parallel. The `summary` job collects their outcomes.
+# Jobs that require Postgres declare a service container independently so they
+# stay fully parallel with each other and with the DB-free gates.
+# ─────────────────────────────────────────────────────────────────────────────
+
+jobs:
+
+  # ── 1. TypeScript ───────────────────────────────────────────────────────────
+  typecheck:
+    name: "TypeScript"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run type-check
+
+  # ── 2. ESLint ───────────────────────────────────────────────────────────────
+  lint:
+    name: "ESLint"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  # ── 3. Vitest + Coverage ≥ 90% ─────────────────────────────────────────────
+  test:
+    name: "Vitest"
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/etash_test
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: etash_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma db push
+      - run: npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  # ── 4. Playwright E2E ───────────────────────────────────────────────────────
+  playwright:
+    name: "Playwright E2E"
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/etash_test
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: etash_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: npx prisma generate
+      - run: npx prisma db push
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # ── 5. Semgrep OWASP ────────────────────────────────────────────────────────
+  semgrep:
+    name: "Semgrep OWASP"
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    # Dependabot PRs can't access org secrets — skip rather than error
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v4
+      - run: semgrep scan --config p/owasp-top-ten --error src
+
+  # ── 6. npm audit ────────────────────────────────────────────────────────────
+  audit:
+    name: "npm audit"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm audit --audit-level=critical
+
+  # ── 7. jscpd ────────────────────────────────────────────────────────────────
+  jscpd:
+    name: "Duplicate Code"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: >-
+          npx --yes jscpd
+          --min-lines 10
+          --threshold 0
+          --reporters console
+          src
+
+  # ── 8. dependency-cruiser ───────────────────────────────────────────────────
+  dep-cruiser:
+    name: "Architecture"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx depcruise --validate .dependency-cruiser.cjs src
+
+  # ── 9. Lighthouse CI ────────────────────────────────────────────────────────
+  lighthouse:
+    name: "Lighthouse CI"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Build
+        run: npm run build
+        env:
+          # Prisma generate needs a value; no DB is actually reached at build time
+          DATABASE_URL: postgresql://localhost/placeholder
+      - name: Run Lighthouse CI
+        run: npx lhci autorun
+        env:
+          DATABASE_URL: postgresql://localhost/placeholder
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+  # ── 10. Gitleaks ────────────────────────────────────────────────────────────
+  gitleaks:
+    name: "Secret Detection"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: "8.22.1"
+        run: |
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/
+      - name: Detect secrets
+        run: gitleaks detect --source . --exit-code 1
+
+  # ── Summary ─────────────────────────────────────────────────────────────────
+  summary:
+    name: "Gate Summary"
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - typecheck
+      - lint
+      - test
+      - playwright
+      - semgrep
+      - audit
+      - jscpd
+      - dep-cruiser
+      - lighthouse
+      - gitleaks
+    steps:
+      - name: Write job summary
+        run: |
+          result() {
+            case "$1" in
+              success)   echo "✅ Pass" ;;
+              failure)   echo "❌ Fail" ;;
+              cancelled) echo "⏹ Cancelled" ;;
+              *)         echo "⏭ Skipped" ;;
+            esac
+          }
+
+          overall="✅ All gates passed"
+          for r in \
+            "${{ needs.typecheck.result }}" \
+            "${{ needs.lint.result }}" \
+            "${{ needs.test.result }}" \
+            "${{ needs.playwright.result }}" \
+            "${{ needs.semgrep.result }}" \
+            "${{ needs.audit.result }}" \
+            "${{ needs.jscpd.result }}" \
+            "${{ needs.dep-cruiser.result }}" \
+            "${{ needs.lighthouse.result }}" \
+            "${{ needs.gitleaks.result }}"
+          do
+            [ "$r" = "success" ] || [ "$r" = "skipped" ] || overall="❌ One or more gates failed"
+          done
+
+          {
+            echo "## CI Gate Summary"
+            echo ""
+            echo "$overall"
+            echo ""
+            echo "| # | Gate | Result |"
+            echo "|---|------|--------|"
+            echo "| 1  | TypeScript (\`tsc --noEmit\`) | $(result '${{ needs.typecheck.result }}') |"
+            echo "| 2  | ESLint (zero warnings) | $(result '${{ needs.lint.result }}') |"
+            echo "| 3  | Vitest + Coverage ≥ 90 % | $(result '${{ needs.test.result }}') |"
+            echo "| 4  | Playwright E2E | $(result '${{ needs.playwright.result }}') |"
+            echo "| 5  | Semgrep OWASP | $(result '${{ needs.semgrep.result }}') |"
+            echo "| 6  | npm audit (critical only) | $(result '${{ needs.audit.result }}') |"
+            echo "| 7  | jscpd (≥ 10 lines) | $(result '${{ needs.jscpd.result }}') |"
+            echo "| 8  | dependency-cruiser architecture | $(result '${{ needs.dep-cruiser.result }}') |"
+            echo "| 9  | Lighthouse CI (perf ≥ 90, a11y ≥ 95) | $(result '${{ needs.lighthouse.result }}') |"
+            echo "| 10 | Gitleaks secret detection | $(result '${{ needs.gitleaks.result }}') |"
+          } >> "$GITHUB_STEP_SUMMARY"

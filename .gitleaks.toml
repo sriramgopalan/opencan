@@ -1,0 +1,13 @@
+title = "Gitleaks configuration for etash"
+
+[extend]
+# Use the default gitleaks ruleset as the base
+useDefault = true
+
+[[allowlists]]
+description = "docker-compose.yml contains known local-dev defaults only, never deployed"
+paths = ['''docker-compose\.ya?ml$''']
+
+[[allowlists]]
+description = ".env.example lists variable names with intentionally empty values"
+paths = ['''\.env\.example$''']

@@ -1,0 +1,49 @@
+{
+  "ignorePatterns": [
+    "*.cjs",
+    "*.mjs",
+    ".lighthouserc.js",
+    ".next/",
+    "coverage/",
+    "playwright-report/",
+    "node_modules/"
+  ],
+  "extends": [
+    "next/core-web-vitals",
+    "plugin:@typescript-eslint/strict",
+    "plugin:import/recommended",
+    "plugin:import/typescript"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": true
+  },
+  "plugins": ["@typescript-eslint", "import"],
+  "rules": {
+    "@typescript-eslint/consistent-type-imports": [
+      "error",
+      { "prefer": "type-imports", "fixStyle": "inline-type-imports" }
+    ],
+    "import/order": [
+      "error",
+      {
+        "groups": [
+          "builtin",
+          "external",
+          "internal",
+          "parent",
+          "sibling",
+          "index"
+        ],
+        "newlines-between": "always",
+        "alphabetize": { "order": "asc", "caseInsensitive": true }
+      }
+    ],
+    "import/no-duplicates": "error"
+  },
+  "settings": {
+    "import/resolver": {
+      "typescript": { "alwaysTryTypes": true }
+    }
+  }
+}
