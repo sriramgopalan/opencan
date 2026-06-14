@@ -88,6 +88,16 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/etash_test
+      AUTH_SECRET: "test-secret-at-least-32-characters-long-for-ci"
+      GOOGLE_CLIENT_ID: "test-google-client-id"
+      GOOGLE_CLIENT_SECRET: "test-google-client-secret"
+      GITHUB_CLIENT_ID: "test-github-client-id"
+      GITHUB_CLIENT_SECRET: "test-github-client-secret"
+      RESEND_API_KEY: "re_test_placeholder"
+      RESEND_FROM: "test@example.com"
+      REDIS_URL: "redis://localhost:6379"
+      NEXTAUTH_URL: "http://localhost:3000"
+      AUTH_URL: "http://localhost:3000"
     services:
       postgres:
         image: postgres:16-alpine
@@ -174,6 +184,18 @@ jobs:
   lighthouse:
     name: "Lighthouse CI"
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/etash_test
+      AUTH_SECRET: "test-secret-at-least-32-characters-long-for-ci"
+      GOOGLE_CLIENT_ID: "test-google-client-id"
+      GOOGLE_CLIENT_SECRET: "test-google-client-secret"
+      GITHUB_CLIENT_ID: "test-github-client-id"
+      GITHUB_CLIENT_SECRET: "test-github-client-secret"
+      RESEND_API_KEY: "re_test_placeholder"
+      RESEND_FROM: "test@example.com"
+      REDIS_URL: "redis://localhost:6379"
+      NEXTAUTH_URL: "http://localhost:3000"
+      AUTH_URL: "http://localhost:3000"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
