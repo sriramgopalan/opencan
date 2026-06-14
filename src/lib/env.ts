@@ -35,36 +35,23 @@ const schema = z
 
 export { schema as envSchema };
 
-const result = schema.safeParse(process.env);
+type Env = z.infer<typeof schema>;
 
-if (!result.success) {
-  const isSafeMode =
-    process.env["NODE_ENV"] === "test" || process.env["GITHUB_ACTIONS"] === "true";
-  if (!isSafeMode) {
+function getEnv(): Env {
+  const result = schema.safeParse(process.env);
+  if (!result.success) {
+    if (process.env["NEXT_PHASE"] === "phase-production-build") {
+      return {} as Env;
+    }
     throw new Error(
-      `Invalid environment variables:\n${result.error.flatten().fieldErrors
-        ? JSON.stringify(result.error.flatten().fieldErrors, null, 2)
-        : result.error.message}`,
+      `Invalid environment variables:\n${JSON.stringify(
+        result.error.flatten().fieldErrors,
+        null,
+        2,
+      )}`,
     );
   }
+  return result.data;
 }
 
-export const env = result.success
-  ? result.data
-  : ({
-      DATABASE_URL:
-        process.env["DATABASE_URL"] ??
-        "postgresql://postgres:postgres@localhost:5432/etash_test",
-      AUTH_SECRET: process.env["AUTH_SECRET"] ?? "test-secret-32-chars-min!!",
-      AUTH_URL: process.env["AUTH_URL"],
-      GOOGLE_CLIENT_ID: process.env["GOOGLE_CLIENT_ID"] ?? "test-gid",
-      GOOGLE_CLIENT_SECRET: process.env["GOOGLE_CLIENT_SECRET"] ?? "test-gsec",
-      GITHUB_CLIENT_ID: process.env["GITHUB_CLIENT_ID"] ?? "test-ghid",
-      GITHUB_CLIENT_SECRET:
-        process.env["GITHUB_CLIENT_SECRET"] ?? "test-ghsec",
-      RESEND_API_KEY: process.env["RESEND_API_KEY"] ?? "re_test",
-      RESEND_FROM: process.env["RESEND_FROM"] ?? "noreply@etash.com",
-      REDIS_URL: process.env["REDIS_URL"] ?? "redis://localhost:6379",
-      LOG_LEVEL: "error" as const,
-      NODE_ENV: "test" as const,
-    } satisfies z.infer<typeof schema>);
+export const env = getEnv();
