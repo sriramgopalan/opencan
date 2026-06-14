@@ -90,7 +90,7 @@ describe("trpc authMiddleware", () => {
   it("passes through when session contains a user id", async () => {
     const caller = createCaller({
       session: {
-        user: { id: "u-1", email: "test@example.com", name: null, image: null },
+        user: { id: "u-1", email: "test@example.com", name: null, image: null, role: "MEMBER" },
         expires: new Date(Date.now() + 86_400_000).toISOString(),
       },
       ip: "127.0.0.1",

@@ -22,12 +22,14 @@ model User {
   passwordHash     String? // null for OAuth-only accounts
   failedLoginCount Int       @default(0)
   lockedUntil      DateTime?
+  role             String    @default("MEMBER") // "ADMIN" | "MEMBER"
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   accounts    Account[]
   sessions    Session[]
   memberships OrganizationMember[]
+  boards      Board[]
 
   @@index([email])
   @@index([lockedUntil])
@@ -96,4 +98,25 @@ model OrganizationMember {
 
   @@unique([userId, organizationId])
   @@index([organizationId])
+}
+
+model Board {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  description  String?  @db.Text
+  isPublic     Boolean  @default(false)
+  isListed     Boolean  @default(false)
+  settingsJson Json
+  position     Int      @default(0)
+  ownerId      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
+  @@index([slug])
+  @@index([isPublic, isListed])
+  @@index([ownerId])
+  @@index([position])
 }

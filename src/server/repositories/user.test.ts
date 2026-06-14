@@ -1,19 +1,13 @@
 
+import type { PrismaClient } from "@prisma/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { mockReset, type DeepMockProxy } from "vitest-mock-extended";
 
-import {
-  mockReset,
-  type DeepMockProxy,
-  type PrismaClient,
-} from "@/tests/helpers/repository-setup";
+import { prisma } from "@/server/db";
 
-let prismaMock: DeepMockProxy<PrismaClient>;
+vi.mock("@/server/db");
 
-vi.mock("@/server/db", async () => {
-  const { mockDeep } = await import("vitest-mock-extended");
-  prismaMock = mockDeep<PrismaClient>();
-  return { prisma: prismaMock };
-});
+const prismaMock = prisma as unknown as DeepMockProxy<PrismaClient>;
 
 const {
   getUserById,

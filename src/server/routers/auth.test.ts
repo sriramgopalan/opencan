@@ -37,7 +37,7 @@ vi.mock("@/lib/logger", () => ({
 const { authRouter } = await import("@/server/routers/auth");
 const { createCallerFactory } = await import("@/server/trpc");
 const { verify } = await import("@node-rs/argon2");
-const { sendPasswordChangedEmail, sendAccountDeletedEmail, sendVerificationEmail } =
+const { sendMagicLinkEmail, sendPasswordChangedEmail, sendAccountDeletedEmail, sendVerificationEmail } =
   await import("@/lib/email");
 
 const createCaller = createCallerFactory(authRouter);
@@ -51,9 +51,9 @@ const SAFE_USER = {
   createdAt: new Date(),
 };
 
-function makeSession(userId = "user-1", email = "user@example.com") {
+function makeSession(userId = "user-1", email = "user@example.com", role = "MEMBER") {
   return {
-    user: { id: userId, email, name: null, image: null },
+    user: { id: userId, email, name: null, image: null, role },
     expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   };
 }
@@ -107,6 +107,23 @@ describe("authRouter", () => {
       await expect(
         caller.requestMagicLink({ email: "user@example.com" }),
       ).rejects.toBeInstanceOf(TRPCError);
+    });
+
+    it("logs error and still returns sent=true when magic link email fails", async () => {
+      prismaMock.user.findUnique.mockResolvedValue(SAFE_USER as never);
+      prismaMock.verificationToken.deleteMany.mockResolvedValue({ count: 0 });
+      prismaMock.verificationToken.create.mockResolvedValue({} as never);
+      vi.mocked(sendMagicLinkEmail).mockRejectedValueOnce(new Error("smtp error"));
+
+      const caller = createCaller({ session: null, ip: "127.0.0.1" });
+      const result = await caller.requestMagicLink({ email: "user@example.com" });
+
+      expect(result).toEqual({ sent: true });
+      await new Promise((r) => setTimeout(r, 0));
+      expect(loggerErrorMock).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        "magic link email failed",
+      );
     });
   });
 
