@@ -21,6 +21,7 @@ const PUBLIC_PATHS = new Set([
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;
+  if (pathname.startsWith("/boards")) return true;
   if (pathname.startsWith("/api/auth")) return true;
   if (pathname.startsWith("/api/trpc")) return true;
   return false;
