@@ -99,11 +99,12 @@ describe("env module safety gate", () => {
     await expect(import("@/lib/env")).rejects.toThrow("Invalid environment variables");
   });
 
-  it("does not throw in CI (GITHUB_ACTIONS=true) even with missing vars", async () => {
-    vi.stubEnv("NODE_ENV", "development");
-    vi.stubEnv("GITHUB_ACTIONS", "true");
+  it("does not throw during next build phase and returns safe stub", async () => {
+    vi.stubEnv("NEXT_PHASE", "phase-production-build");
     vi.stubEnv("DATABASE_URL", "");
 
-    await expect(import("@/lib/env")).resolves.toBeDefined();
+    const mod = await import("@/lib/env");
+    expect(mod.env.LOG_LEVEL).toBe("silent");
+    expect(mod.env.NODE_ENV).toBe("production");
   });
 });

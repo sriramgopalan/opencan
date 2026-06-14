@@ -41,7 +41,7 @@ function getEnv(): Env {
   const result = schema.safeParse(process.env);
   if (!result.success) {
     if (process.env["NEXT_PHASE"] === "phase-production-build") {
-      return {} as Env;
+      return { LOG_LEVEL: "silent", NODE_ENV: "production" } as unknown as Env;
     }
     throw new Error(
       `Invalid environment variables:\n${JSON.stringify(

@@ -88,12 +88,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/etash_test
-      AUTH_SECRET: "test-secret-at-least-32-characters-long-for-ci"
+      AUTH_SECRET: "ci-placeholder-not-a-real-secret"
       GOOGLE_CLIENT_ID: "test-google-client-id"
       GOOGLE_CLIENT_SECRET: "test-google-client-secret"
       GITHUB_CLIENT_ID: "test-github-client-id"
       GITHUB_CLIENT_SECRET: "test-github-client-secret"
-      RESEND_API_KEY: "re_test_placeholder"
+      RESEND_API_KEY: "placeholder-resend-key-not-real"
       RESEND_FROM: "test@example.com"
       REDIS_URL: "redis://localhost:6379"
       NEXTAUTH_URL: "http://localhost:3000"
@@ -186,12 +186,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/etash_test
-      AUTH_SECRET: "test-secret-at-least-32-characters-long-for-ci"
+      AUTH_SECRET: "ci-placeholder-not-a-real-secret"
       GOOGLE_CLIENT_ID: "test-google-client-id"
       GOOGLE_CLIENT_SECRET: "test-google-client-secret"
       GITHUB_CLIENT_ID: "test-github-client-id"
       GITHUB_CLIENT_SECRET: "test-github-client-secret"
-      RESEND_API_KEY: "re_test_placeholder"
+      RESEND_API_KEY: "placeholder-resend-key-not-real"
       RESEND_FROM: "test@example.com"
       REDIS_URL: "redis://localhost:6379"
       NEXTAUTH_URL: "http://localhost:3000"
