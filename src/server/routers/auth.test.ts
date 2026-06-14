@@ -51,9 +51,9 @@ const SAFE_USER = {
   createdAt: new Date(),
 };
 
-function makeSession(userId = "user-1", email = "user@example.com") {
+function makeSession(userId = "user-1", email = "user@example.com", role = "MEMBER") {
   return {
-    user: { id: userId, email, name: null, image: null },
+    user: { id: userId, email, name: null, image: null, role },
     expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   };
 }

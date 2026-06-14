@@ -30,6 +30,8 @@ const t = initTRPC.context<Context>().create({
   },
 });
 
+type AuthedSession = Session & { user: NonNullable<Session["user"]> & { id: string } };
+
 const authMiddleware = t.middleware(({ ctx, next }) => {
   if (!ctx.session?.user?.id) {
     throw new TRPCError({
@@ -38,16 +40,23 @@ const authMiddleware = t.middleware(({ ctx, next }) => {
     });
   }
   return next({
-    ctx: {
-      ...ctx,
-      session: ctx.session as Session & {
-        user: NonNullable<Session["user"]> & { id: string };
-      },
-    },
+    ctx: { ...ctx, session: ctx.session as AuthedSession },
   });
+});
+
+const adminMiddleware = t.middleware(({ ctx, next }) => {
+  const session = ctx.session as AuthedSession;
+  if (session.user.role !== "ADMIN") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      cause: new AppError("FORBIDDEN", "Admin access required"),
+    });
+  }
+  return next({ ctx: { ...ctx, session } });
 });
 
 export const createTRPCRouter = t.router;
 export const createCallerFactory = t.createCallerFactory;
 export const publicProcedure = t.procedure;
 export const protectedProcedure = t.procedure.use(authMiddleware);
+export const adminProcedure = protectedProcedure.use(adminMiddleware);

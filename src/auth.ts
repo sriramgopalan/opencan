@@ -69,7 +69,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         await resetFailedLoginCount(user.id);
-        return { id: user.id, email };
+        return { id: user.id, email, role: "MEMBER" };
       },
     }),
     Google({
@@ -105,6 +105,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     session: async ({ session, user }) => {
       if (session.user && user) {
         session.user.id = user.id;
+        session.user.role = user.role;
       }
       return session;
     },
