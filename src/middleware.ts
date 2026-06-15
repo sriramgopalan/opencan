@@ -24,6 +24,9 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(signInUrl);
   }
 
+  // TODO: Add JTI blocklist check here before allowing access
+  // See /specs/role-invalidation.md for full implementation spec
+  // Implement when admin user management feature is built (Phase 1 Week 7)
   const session = await getSessionFromJWT(token);
   if (!session) {
     const signInUrl = new URL("/auth/signin", nextUrl);
