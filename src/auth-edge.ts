@@ -29,14 +29,12 @@ export async function getSessionFromJWT(
       keyManagementAlgorithms: ["dir"],
       contentEncryptionAlgorithms: ["A256CBC-HS512", "A256GCM"],
     });
-    console.log("[auth-edge] JWT payload:", JSON.stringify(payload));
     return {
       id: (payload.sub ?? payload.id ?? "") as string,
       role: (payload.role as string) ?? "MEMBER",
       email: (payload.email as string) ?? "",
     };
-  } catch (err) {
-    console.error("[auth-edge] jwtDecrypt failed:", err);
+  } catch {
     return null;
   }
 }
