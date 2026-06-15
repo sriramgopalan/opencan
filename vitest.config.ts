@@ -10,7 +10,7 @@ export default defineConfig({
     globals: true,
     passWithNoTests: true,
     include: ["src/**/*.{test,spec}.{ts,tsx}", "server/**/*.{test,spec}.{ts,tsx}"],
-    setupFiles: ["./src/tests/setup.ts"],
+    setupFiles: ["./src/tests/env-setup.ts", "./src/tests/setup.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
