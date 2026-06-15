@@ -3,7 +3,11 @@ import { Resend } from "resend";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 
-const resend = new Resend(env.RESEND_API_KEY);
+let _resend: Resend | null = null;
+function getResend() {
+  if (!_resend) _resend = new Resend(env.RESEND_API_KEY);
+  return _resend;
+}
 
 interface SendEmailOptions {
   to: string;
@@ -12,7 +16,7 @@ interface SendEmailOptions {
 }
 
 async function sendEmail(opts: SendEmailOptions): Promise<void> {
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: env.RESEND_FROM,
     to: opts.to,
     subject: opts.subject,
