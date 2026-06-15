@@ -1,37 +1,20 @@
-import NextAuth from "next-auth";
-import GitHub from "next-auth/providers/github";
-import Google from "next-auth/providers/google";
+import { jwtVerify } from "jose";
 
-import { env } from "@/lib/env";
+const secret = new TextEncoder().encode(process.env["AUTH_SECRET"] ?? "");
 
-export const { auth } = NextAuth({
-  secret: env.AUTH_SECRET,
-  providers: [
-    Google({
-      clientId: env.GOOGLE_CLIENT_ID,
-      clientSecret: env.GOOGLE_CLIENT_SECRET,
-    }),
-    GitHub({
-      clientId: env.GITHUB_CLIENT_ID,
-      clientSecret: env.GITHUB_CLIENT_SECRET,
-    }),
-  ],
-  session: { strategy: "jwt" },
-  callbacks: {
-    jwt: async ({ token, user }) => {
-      if (user) {
-        token.id = user.id;
-        token.role = user.role;
-      }
-      return token;
-    },
-    session: async ({ session, token }) => {
-      if (session.user && token) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-      }
-      return session;
-    },
-  },
-  pages: { signIn: "/auth/signin" },
-});
+export async function getSessionFromJWT(
+  token: string,
+): Promise<{ id: string; role: string; email: string } | null> {
+  try {
+    const { payload } = await jwtVerify(token, secret, {
+      algorithms: ["HS256"],
+    });
+    return {
+      id: payload.sub ?? (payload.id as string),
+      role: (payload.role as string) ?? "MEMBER",
+      email: payload.email as string,
+    };
+  } catch {
+    return null;
+  }
+}

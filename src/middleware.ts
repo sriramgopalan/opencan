@@ -1,31 +1,38 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { auth } from "@/auth-edge";
+import { getSessionFromJWT } from "@/auth-edge";
 
-export default auth((req) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { nextUrl, auth: session } = req as any;
-  const isLoggedIn = !!session;
+export async function middleware(req: NextRequest) {
+  const { nextUrl } = req;
 
-  const { pathname } = nextUrl as URL;
   const isPublicPath =
-    pathname === "/" ||
-    pathname.startsWith("/auth/") ||
-    pathname.startsWith("/boards") ||
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/trpc") ||
-    pathname === "/robots.txt" ||
-    pathname === "/sitemap.xml";
+    nextUrl.pathname === "/" ||
+    nextUrl.pathname.startsWith("/auth/") ||
+    nextUrl.pathname.startsWith("/boards") ||
+    nextUrl.pathname.startsWith("/api/auth") ||
+    nextUrl.pathname.startsWith("/api/trpc") ||
+    nextUrl.pathname === "/robots.txt" ||
+    nextUrl.pathname === "/sitemap.xml";
 
-  if (!isPublicPath && !isLoggedIn) {
-    const signInUrl = new URL("/auth/signin", nextUrl as URL);
-    signInUrl.searchParams.set("callbackUrl", pathname);
+  if (isPublicPath) return NextResponse.next();
+
+  const token = req.cookies.get("authjs.session-token")?.value;
+  if (!token) {
+    const signInUrl = new URL("/auth/signin", nextUrl);
+    signInUrl.searchParams.set("callbackUrl", nextUrl.pathname);
+    return NextResponse.redirect(signInUrl);
+  }
+
+  const session = await getSessionFromJWT(token);
+  if (!session) {
+    const signInUrl = new URL("/auth/signin", nextUrl);
+    signInUrl.searchParams.set("callbackUrl", nextUrl.pathname);
     return NextResponse.redirect(signInUrl);
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
