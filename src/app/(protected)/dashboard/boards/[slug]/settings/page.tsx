@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BoardSettingsPage({ params }: Props) {
   const session = await auth();
-  if (session?.user?.role !== "ADMIN") redirect("/dashboard");
+  if (session?.user?.role !== "ADMIN") redirect("/");
 
   const { slug } = await params;
   const board = await getBoardBySlugAdmin(slug);

@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "New board — Dashboard" };
 
 export default async function NewBoardPage() {
   const session = await auth();
-  if (session?.user?.role !== "ADMIN") redirect("/dashboard");
+  if (session?.user?.role !== "ADMIN") redirect("/");
 
   return (
     <main>

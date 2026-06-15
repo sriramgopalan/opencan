@@ -15,7 +15,7 @@ interface Props {
 
 export default async function DashboardBoardsPage({ searchParams }: Props) {
   const session = await auth();
-  if (session?.user?.role !== "ADMIN") redirect("/dashboard");
+  if (session?.user?.role !== "ADMIN") redirect("/");
 
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
