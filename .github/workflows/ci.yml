@@ -235,6 +235,15 @@ jobs:
           # Prisma generate needs a value; no DB is actually reached at build time
           DATABASE_URL: postgresql://localhost/placeholder
           NEXT_TELEMETRY_DISABLED: 1
+      - name: Verify server starts
+        run: |
+          npm run start &
+          SERVER_PID=$!
+          sleep 8
+          echo "=== curl output ==="
+          curl -sv http://localhost:3000/ 2>&1 || true
+          echo "=== server output ==="
+          kill $SERVER_PID 2>/dev/null || true
       - name: Run Lighthouse CI
         run: npx lhci autorun
         env:
