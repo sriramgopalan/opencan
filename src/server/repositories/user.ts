@@ -25,7 +25,7 @@ export async function getUserByEmail(email: string): Promise<SafeUser | null> {
 
 export async function getUserWithPasswordHash(
   email: string,
-): Promise<{ id: string; passwordHash: string | null; failedLoginCount: number; lockedUntil: Date | null } | null> {
+): Promise<{ id: string; passwordHash: string | null; failedLoginCount: number; lockedUntil: Date | null; role: string } | null> {
   return prisma.user.findUnique({
     where: { email },
     select: {
@@ -33,6 +33,7 @@ export async function getUserWithPasswordHash(
       passwordHash: true,
       failedLoginCount: true,
       lockedUntil: true,
+      role: true,
     },
   });
 }

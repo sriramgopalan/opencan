@@ -70,7 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         await resetFailedLoginCount(user.id);
-        return { id: user.id, email, role: "MEMBER" };
+        return { id: user.id, email, role: user.role };
       },
     }),
     Google({
