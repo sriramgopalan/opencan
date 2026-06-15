@@ -22,6 +22,7 @@ const schema = z
   .superRefine((data, ctx) => {
     if (
       data.NODE_ENV === "production" &&
+      !process.env["CI"] &&
       data.AUTH_URL &&
       !data.AUTH_URL.startsWith("https://")
     ) {

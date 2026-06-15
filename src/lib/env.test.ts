@@ -43,6 +43,14 @@ describe("envSchema validation", () => {
   });
 
   describe("AUTH_URL HTTPS requirement in production", () => {
+    beforeEach(() => {
+      // Ensure CI env var is unset so the superRefine HTTPS check fires
+      vi.stubEnv("CI", "");
+    });
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
     it("passes when AUTH_URL is HTTPS in production", () => {
       const result = envSchema.safeParse({
         ...VALID_BASE,
