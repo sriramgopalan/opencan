@@ -1,50 +1,41 @@
 # Spec: Posts
 
 **Application:** Etash — Customer Feedback  
-**Version:** 0.1  
-**Status:** DRAFT — decisions below must be resolved before implementation begins
+**Version:** 0.2  
+**Status:** ACCEPTED
 
 ---
 
-## Open Decisions
+## Decisions
 
-> **All items in this table block implementation.** Resolve each one and update the
-> relevant sections of this spec before writing any code.
-
-| # | Topic | Options | Impact |
-|---|-------|---------|--------|
-| P-01 | Post URL identifier | (a) CUID: `/boards/[slug]/posts/[cuid]` — opaque, stable; (b) Board-scoped integer counter: `/boards/[slug]/posts/42` — human-readable, matches GitHub/Linear conventions | URL structure, Post model, index |
-| P-02 | Title character limit | 100 / 150 / 200 characters | Schema validation, UI |
-| P-03 | Description character limit | 1 000 / 2 000 / 5 000 characters | Schema validation, UI |
-| P-04 | Description format | Plain text / Markdown / Rich text (Tiptap) | Rendering, storage, XSS surface |
-| P-05 | Guest post attribution | Guests who post when `whoCanPost = ANYONE`: (a) store nothing — post appears as "Anonymous"; (b) store email at submission time (PII concern); (c) require a display name (no account) | Post model, PII implications |
-| P-06 | Duplicate detection | (a) None; (b) Client-side warning only (similarity search before submit); (c) Server-side soft-block (return similar posts, require user to confirm before creating) | Complexity, UX |
-| P-07 | Duplicate detection method | If P-06 ≠ (a): (a) trigram similarity (pg_trgm); (b) full-text search (tsvector); (c) title exact-match only | DB extension requirements |
-| P-08 | Similarity threshold | If P-06 ≠ (a): what score triggers a warning? | UX, false-positive rate |
-| P-09 | Votes: up-only vs up/down | (a) Upvote only (simpler, less toxic); (b) Up + down votes | Vote model, UI |
-| P-10 | Vote retraction | Can a user un-vote after voting? (a) Yes — toggle; (b) No — permanent | Vote model, UX |
-| P-11 | Guest vote attribution | If board has `guestVotingEnabled`: how to prevent duplicate guest votes? (a) IP address (circumventable, privacy concern); (b) Browser fingerprint; (c) No enforcement — accept duplicate guest votes | Security, PII |
-| P-12 | Initial post status | When `postModerationEnabled = false`: (a) `OPEN` immediately; (b) `OPEN` and require `status` in the create input | Default status value |
-| P-13 | Pinned post ordering | Multiple pinned posts on one board: (a) order by `pinnedAt DESC` (most recently pinned first); (b) admin-controlled `pinPosition` integer; (c) `pinnedAt ASC` (oldest pin first) | Pin model, UI complexity |
-| P-14 | Hard vs soft delete | (a) Hard delete immediately — post gone; (b) Soft delete — `deletedAt` field, hidden from public but visible to admins for audit | Compliance, data recovery |
-| P-15 | Post edit history | (a) No history — last write wins; (b) Audit log of title/description changes (who changed what, when) | Model complexity |
-| P-16 | `PENDING` visibility | When `postModerationEnabled = true`, `PENDING` posts: (a) visible only to the submitting user and admins; (b) visible only to admins | UX, filtering complexity |
-
----
-
-## Resolved Decisions
-
-| # | Topic | Resolution | Source |
-|---|-------|------------|--------|
+| # | Topic | Resolution |
+|---|-------|------------|
+| P-01 | Post URL identifier | Board-scoped integer counter. URL: `/boards/[boardSlug]/posts/[postNumber]`. `postNumber` is a per-board auto-incrementing integer. Internal DB primary key remains CUID. |
+| P-02 | Title character limit | 150 characters maximum |
+| P-03 | Description character limit | 2 000 characters maximum |
+| P-04 | Description format | Markdown. Stored as raw string; rendered on display. XSS prevention via sanitisation on render. |
+| P-05 | Guest post attribution | Guest posts require a `guestName` (display name). No email collected. No account created. `guestName` stored on the `Post` row. |
+| P-06 | Duplicate detection | Client-side warning only. UI fetches similar posts before showing the compose form. User may proceed regardless. No server-side block. |
+| P-07 | Duplicate detection method | PostgreSQL trigram similarity via `pg_trgm` extension. No external service. |
+| P-08 | Similarity threshold | 0.4 — scores at or above this value surface a warning. |
+| P-09 | Votes | Upvote only. No downvotes. |
+| P-10 | Vote retraction | Toggle — users can retract their vote. |
+| P-11 | Guest vote deduplication | IP address in v1. Known limitation: shared NAT can conflate voters; document as accepted risk. |
+| P-12 | Initial post status | Always `OPEN` (when moderation disabled) or `PENDING` (when moderation enabled). Not configurable by the caller. |
+| P-13 | Pinned post ordering | Multiple pinned posts ordered by `pinnedAt DESC` — most recently pinned appears first. |
+| P-14 | Delete strategy | Hard delete in v1. Soft delete (`deletedAt` field) deferred to v1.1. |
+| P-15 | Post edit history | No history in v1. Last write wins. Deferred to v1.1. |
+| P-16 | `PENDING` visibility | Visible to the submitting author and admins only. All other callers receive `POST_NOT_FOUND`. |
+| P-17 | Author edit lock by status | Authors cannot edit posts with status `SHIPPED` or `CLOSED`. Only admins may edit those posts. |
 | R-01 | Admin scope | Global admins only; no per-board moderators in v1 | Inherited from boards.md decision 01 |
-| R-02 | Board relationship | A post belongs to exactly one board; no cross-board posts | This spec |
-| R-03 | Cascade on board delete | Post, votes, and comments are hard-deleted in the same transaction as the board | boards.md decision 19 |
-| R-04 | `whoCanPost` semantics | Post permission is inherited from board settings: `ANYONE` / `AUTHENTICATED` / `ADMINS_ONLY` | boards.md decision 04 |
-| R-05 | Post statuses | Six statuses: `OPEN`, `UNDER_REVIEW`, `PLANNED`, `IN_PROGRESS`, `SHIPPED`, `CLOSED` | This spec |
-| R-06 | Status changes | Admin only. Authors cannot change status. | This spec |
-| R-07 | Pin scope | A post is pinned to its board; it has no meaning outside its board | This spec |
-| R-08 | Author edit window | Author (authenticated, non-admin) may edit title and description only. All other fields are admin-only. | This spec |
-| R-09 | Post URL pattern | `/boards/[boardSlug]/posts/[postId]` — see P-01 for postId format | This spec (P-01 unresolved) |
+| R-02 | Board relationship | A post belongs to exactly one board; no cross-board posts |
+| R-03 | Cascade on board delete | Posts, votes, and comments are hard-deleted in the same transaction as the board — boards.md decision 19 |
+| R-04 | `whoCanPost` semantics | Post permission inherited from board settings: `ANYONE` / `AUTHENTICATED` / `ADMINS_ONLY` — boards.md decision 04 |
+| R-05 | Post statuses | Seven values: `PENDING`, `OPEN`, `UNDER_REVIEW`, `PLANNED`, `IN_PROGRESS`, `SHIPPED`, `CLOSED` |
+| R-06 | Status changes | Admin only. Authors cannot change status. |
+| R-07 | Pin scope | A post is pinned to its board; pin has no meaning outside its board |
+| R-08 | Author edit window | Author may edit `title` and `description` only. All other fields are admin-only. |
+| R-09 | Post URL pattern | `/boards/[boardSlug]/posts/[postNumber]` — resolved by P-01 |
 
 ---
 
@@ -69,14 +60,16 @@
 
 ```
 Post {
-  id            String      @id                       // format: see P-01
-  boardId       String                                // FK → Board
-  authorId      String?                               // FK → User; null for guest posts
-  title         String                                // max: see P-02
-  description   String?                               // max: see P-03; format: see P-04
-  status        PostStatus  @default(OPEN)            // see R-05; PENDING added when postModerationEnabled
+  id            String      @id @default(cuid())      // internal DB key; not used in URLs
+  postNumber    Int                                    // board-scoped counter; used in URL (/posts/[postNumber])
+  boardId       String                                 // FK → Board
+  authorId      String?                                // FK → User; null for guest posts
+  guestName     String?                                // display name for guest posts (P-05); null for authenticated posts
+  title         String                                 // max 150 characters (P-02)
+  description   String?                                // max 2 000 characters, Markdown (P-03, P-04)
+  status        PostStatus  @default(OPEN)             // PENDING only when postModerationEnabled = true
   isPinned      Boolean     @default(false)
-  pinnedAt      DateTime?                             // set when isPinned flips to true
+  pinnedAt      DateTime?                              // set when isPinned flips to true; cleared on unpin
   voteCount     Int         @default(0)               // denormalised; kept in sync on every vote change
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -85,6 +78,7 @@ Post {
   author        User?       @relation(...)
   votes         Vote[]
 
+  @@unique([boardId, postNumber])
   @@index([boardId, status])
   @@index([boardId, voteCount])
   @@index([boardId, createdAt])
@@ -114,35 +108,34 @@ Vote {
   id        String    @id @default(cuid())
   postId    String                            // FK → Post
   userId    String?                           // FK → User; null for guest votes
-  guestKey  String?                           // guest vote de-duplication key (see P-11)
+  guestIp   String?                           // IP-based guest deduplication (P-11); null for authenticated votes
   createdAt DateTime  @default(now())
 
   post      Post      @relation(...)
   user      User?     @relation(...)
 
   @@unique([postId, userId])                  // one vote per authenticated user per post
+  @@unique([postId, guestIp])                 // one vote per IP per post for guests
   @@index([postId])
   @@index([userId])
 }
 ```
 
-**`userId` and `guestKey` are mutually exclusive:** a vote has exactly one of them set (enforced at the application layer).
+**`userId` and `guestIp` are mutually exclusive:** a vote has exactly one of them set (enforced at the application layer). Guest deduplication by IP is a best-effort mechanism; shared NAT environments may falsely prevent multiple legitimate voters. This is an accepted risk in v1 (P-11).
 
 ---
 
-## 2. Post Character Limits
+## 2. Post Character Limits and Format
 
-> **Blocked on P-02 and P-03.** The values below are placeholders and must be
-> replaced with resolved decisions before the Zod schema is written.
+| Field | Min | Max | Format |
+|-------|-----|-----|--------|
+| `title` | 5 characters | 150 characters | Plain text |
+| `description` | 0 (optional) | 2 000 characters | Markdown |
+| `guestName` | 2 characters | 50 characters | Plain text |
 
-| Field | Min | Max (TBD) |
-|-------|-----|-----------|
-| `title` | 5 characters | P-02 |
-| `description` | 0 (optional) | P-03 |
+**Description Markdown:** Stored as a raw Markdown string. Rendered to HTML on display. The rendering layer must sanitise output (strip `<script>`, `javascript:` hrefs, and other XSS vectors) before inserting into the DOM.
 
-Limits are enforced:
-1. At the Zod input schema layer (tRPC procedure input)
-2. At the DB column level (if using `VARCHAR`; Postgres `TEXT` has no length limit — application layer is the sole enforcer if using `TEXT`)
+Limits are enforced at the Zod input schema layer (tRPC procedure input). Both fields use Postgres `TEXT` columns — the application layer is the sole length enforcer.
 
 ---
 
@@ -170,14 +163,14 @@ Limits are enforced:
 8. The response includes the full post object.
 9. Submitting to a private board (`isPublic = false`) as a non-admin returns `POST_NOT_FOUND` (not `FORBIDDEN`), to avoid leaking board existence.
 10. Submitting to a non-existent board returns `BOARD_NOT_FOUND`.
-11. If duplicate detection is enabled (P-06), a warning is returned alongside the created post or before creation — per the resolved behaviour of P-06.
+11. Duplicate detection is client-side only. The `posts.getSimilar` query (§5) is called by the UI before showing the compose form. `posts.create` itself does not block on duplicates and does not return `similarPosts`.
 
 #### Edge Cases
 
 - `title` is only whitespace → rejected; treat as missing after `.trim()`.
 - Board `whoCanPost` changes to a more restrictive value mid-session → the next post attempt is rejected under the new rules; in-flight requests may still complete.
-- Guest submits when `whoCanPost = ANYONE` and board `postModerationEnabled = true` → post created as `PENDING`; guest attribution follows P-05.
-- Concurrent posts with identical title → both created; duplicate detection (P-06) is advisory only and does not provide uniqueness.
+- Guest submits when `whoCanPost = ANYONE` → `guestName` is required in the input; `authorId` is `null`. Post is subject to the same moderation rules as authenticated posts.
+- Concurrent posts with identical title → both created; duplicate detection is client-side advisory only and provides no uniqueness guarantee.
 
 #### Error States
 
@@ -207,8 +200,9 @@ Limits are enforced:
 ```ts
 z.object({
   boardId:     z.string().cuid(),
-  title:       z.string().trim().min(5).max(/* P-02 */),
-  description: z.string().trim().max(/* P-03 */).optional(),
+  title:       z.string().trim().min(5).max(150),
+  description: z.string().trim().max(2000).optional(),
+  guestName:   z.string().trim().min(2).max(50).optional(), // required when caller is unauthenticated
 })
 ```
 
@@ -216,8 +210,10 @@ z.object({
 ```ts
 {
   id:          string,
+  postNumber:  number,
   boardId:     string,
   authorId:    string | null,
+  guestName:   string | null,
   title:       string,
   description: string | null,
   status:      "PENDING" | "OPEN",
@@ -225,8 +221,6 @@ z.object({
   voteCount:   0,
   createdAt:   string, // ISO-8601
   updatedAt:   string,
-  // If duplicate detection enabled (P-06):
-  similarPosts?: Array<{ id: string, title: string, voteCount: number }>,
 }
 ```
 
@@ -316,12 +310,10 @@ z.object({ id: z.string() })
 2. All other fields (`status`, `isPinned`, `voteCount`, `boardId`) are not editable via this procedure; use the dedicated procedures for those.
 3. Authors may only edit their own posts; admins may edit any post.
 4. A `PENDING` post may be edited by its author while awaiting approval.
-5. An author editing a `SHIPPED` or `CLOSED` post: **decision required** — should editing be locked by status? Flagged as P-17 below.
+5. Authors cannot edit posts with status `SHIPPED` or `CLOSED` — only admins may edit those posts (P-17).
 6. `updatedAt` is refreshed on every successful update.
 7. A no-op update (same values) succeeds and returns the current post without modifying `updatedAt`.
 8. Partial updates are supported (PATCH semantics); omitting a field leaves it unchanged.
-
-> **P-17 (new):** Should authors be locked out of editing when post status is `SHIPPED` or `CLOSED`? Options: (a) no lock — author can always edit their own post; (b) locked at `SHIPPED`/`CLOSED` — admin only can edit.
 
 #### Error States
 
@@ -329,9 +321,10 @@ z.object({ id: z.string() })
 |-----------|--------------------|-----------------------|
 | Post not found | "Post not found." | `logger.info { postId }` |
 | Not author or admin | "You don't have permission to edit this post." | `logger.warn { userId, postId }` |
+| Author editing `SHIPPED`/`CLOSED` post | "This post can no longer be edited." | `logger.info { userId, postId, status }` |
 | Title blank after trim | "A title is required." | not logged |
-| Title too long | "Title must be [max] characters or fewer." | not logged |
-| Description too long | "Description must be [max] characters or fewer." | not logged |
+| Title too long | "Title must be 150 characters or fewer." | not logged |
+| Description too long | "Description must be 2 000 characters or fewer." | not logged |
 | DB error | "Something went wrong." | `logger.error { err }` |
 
 #### Security Requirements
@@ -349,8 +342,8 @@ z.object({ id: z.string() })
 ```ts
 z.object({
   id:          z.string(),
-  title:       z.string().trim().min(5).max(/* P-02 */).optional(),
-  description: z.string().trim().max(/* P-03 */).nullish(),
+  title:       z.string().trim().min(5).max(150).optional(),
+  description: z.string().trim().max(2000).nullish(),
 })
 ```
 
@@ -429,7 +422,7 @@ z.object({ id: z.string() })
 
 #### Edge Cases
 
-- Two posts have identical `voteCount` and `createdAt` — tie broken by `id` (alphabetical CUID order) for stable cursor pagination.
+- Two posts have identical `voteCount` and `createdAt` — tie broken by `postNumber ASC` for stable cursor pagination.
 - Board visibility changes mid-request — each request is evaluated at the time it arrives.
 
 #### Error States
@@ -551,7 +544,7 @@ z.object({
 3. Unpinning sets `isPinned = false` and clears `pinnedAt = null`.
 4. There is no maximum number of pinned posts per board in v1.
 5. Pinned posts appear above all non-pinned posts in every sort order on `posts.list`.
-6. The ordering of multiple pinned posts relative to each other is governed by the resolved value of P-13.
+6. Multiple pinned posts are ordered by `pinnedAt DESC` — the most recently pinned post appears first (P-13).
 7. Pinning a post that is already pinned is a no-op (returns success, no DB write).
 8. Unpinning a post that is not pinned is a no-op.
 
@@ -602,33 +595,64 @@ Guest posting is controlled by `board.settings.whoCanPost`:
 | `ADMINS_ONLY`      | ❌ Blocked (unless admin) | ❌ Blocked |
 
 - Default is `AUTHENTICATED` (boards.md decision 04).
-- When a guest posts, `authorId` is `null`.
-- Guest attribution (display name, email) is governed by **P-05** above.
+- When a guest posts, `authorId` is `null` and `guestName` is required. No email is collected. No account is created (P-05).
+- `guestName` is a plain-text display name, 2–50 characters.
 - Guest posts are subject to the same moderation rules as authenticated posts.
 
 ---
 
 ## 5. Duplicate Detection
 
-Governed by **P-06**, **P-07**, and **P-08** above. Until those decisions are resolved, no duplicate detection is implemented.
+Detection is **client-side warning only** (P-06). The server does not block post creation on similarity. The UI calls `posts.getSimilar` before showing the compose form; the user may proceed regardless of results.
 
-If detection is enabled, it fires in `posts.create` and:
-- Searches for similar posts on the **same board only** (not cross-board).
-- Returns `similarPosts` in the response alongside the draft (advisory) or before creation (soft-block) per P-06.
-- A similarity threshold below P-08 suppresses the warning.
-- Exact title match is always surfaced regardless of threshold.
+### 5.1 Query
+
+**Procedure:** `posts.getSimilar`  
+**Type:** `query`
+
+**Input:**
+```ts
+z.object({
+  boardId: z.string().cuid(),
+  title:   z.string().trim().min(1).max(150),
+})
+```
+
+**Output:**
+```ts
+{
+  items: Array<{
+    postNumber: number,
+    title:      string,
+    voteCount:  number,
+    status:     PostStatus,
+  }>,
+}
+```
+
+### 5.2 Implementation
+
+- Uses the PostgreSQL `pg_trgm` extension (`similarity()` function) (P-07).
+- Searches titles of non-`PENDING` posts on the **same board only**.
+- Returns posts where `similarity(post.title, $input) >= 0.4` (P-08), ordered by similarity score descending.
+- Maximum 5 results returned.
+- The `pg_trgm` extension must be enabled in the migration that creates the `Post` table: `CREATE EXTENSION IF NOT EXISTS pg_trgm;`
+- A trigram GIN index on `Post.title` is required for performance: `@@index([title], type: Gin, ops: { title: "gin_trgm_ops" })`
+- Exact title match (similarity = 1.0) is always included if present.
 
 ---
 
 ## 6. Post URL Pattern
 
 ```
-/boards/[boardSlug]/posts/[postId]
+/boards/[boardSlug]/posts/[postNumber]
 ```
 
 - `boardSlug` is the board's globally unique slug (boards.md §2).
-- `postId` format is resolved by **P-01**.
-- The `boardSlug` segment is included in the URL for human readability and for scoping the post within its board context. It is not used for the database lookup — the server fetches by `postId` and verifies it belongs to the board matching `boardSlug`, returning `POST_NOT_FOUND` if they don't match (prevents ID enumeration across boards).
+- `postNumber` is a per-board auto-incrementing integer (e.g. `1`, `42`, `137`). It is unique within a board but not globally unique across all boards.
+- The server looks up the post by `(boardId, postNumber)` — the `@@unique([boardId, postNumber])` constraint makes this a single-row lookup.
+- The `boardSlug` segment is validated: if the post's board slug does not match the URL segment, the server returns `POST_NOT_FOUND` to prevent cross-board ID guessing.
+- The internal CUID (`id`) is never exposed in URLs.
 
 ---
 
@@ -660,7 +684,7 @@ Post deletion order within the transaction:
 `voteCount` on `Post` is a denormalised integer. Rules:
 
 - **On vote create:** `UPDATE Post SET voteCount = voteCount + 1 WHERE id = $postId` in the same transaction as `INSERT INTO Vote`.
-- **On vote delete (if retraction is enabled — P-10):** `UPDATE Post SET voteCount = voteCount - 1` in the same transaction as `DELETE FROM Vote`.
+- **On vote retract (toggle, P-10):** `UPDATE Post SET voteCount = voteCount - 1` in the same transaction as `DELETE FROM Vote`.
 - **On post delete:** no update needed — the row is gone.
 - **On board delete:** no update needed — all rows are gone.
 
@@ -678,7 +702,9 @@ Required indexes (beyond those on the Post model above):
 | `Post` | `(boardId, isPinned, voteCount DESC)` | Pin-first sort |
 | `Post` | `(boardId, createdAt DESC)` | Recency sort |
 | `Vote` | `(postId, userId)` | Unique constraint + `hasVoted` lookup |
+| `Vote` | `(postId, guestIp)` | Unique constraint for guest vote deduplication |
 | `Vote` | `(userId)` | User's vote history |
+| `Post` | GIN trigram on `title` | `posts.getSimilar` similarity search via pg_trgm |
 
 ---
 
@@ -692,5 +718,5 @@ Required indexes (beyond those on the Post model above):
 | Moving a post between boards | Not in scope |
 | Post merge (consolidate duplicates) | Not in scope; related to P-06 |
 | Subscriber notifications ("notify me on status change") | Not in scope |
-| Post edit history | Flagged as P-15 |
+| Post edit history | No history in v1 — last write wins. Deferred to v1.1 (P-15). |
 | Admin post approval queue view | UI concern; backed by `status = PENDING` filter on `posts.list` |
