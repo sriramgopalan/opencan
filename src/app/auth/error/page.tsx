@@ -10,6 +10,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   Configuration: "There is a server configuration error.",
   AccessDenied: "Access was denied.",
   Verification: "The verification link is invalid or has expired.",
+  LinkExpired: "This sign-in link has expired. Please request a new one.",
+  InvalidLink: "This sign-in link is invalid or has already been used.",
+  UserNotFound: "No account found for this email address. Please register first.",
 };
 
 function ErrorContent() {
