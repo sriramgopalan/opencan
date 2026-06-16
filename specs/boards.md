@@ -59,8 +59,8 @@ Board {
   slug          String      @unique
   name          String      // max 100 characters
   description   String?
-  isPublic      Boolean     @default(true)
-  isListed      Boolean     @default(true)
+  isPublic      Boolean     @default(false)
+  isListed      Boolean     @default(false)
   position      Int         @default(0)   // manual ordering; ties broken by createdAt
   ownerId       String                    // FK → User; set to creator at creation time
   settingsJson  Json                      // validated against BoardSettingsSchema on read/write
@@ -164,6 +164,11 @@ Any attempt to create or update a board with a reserved slug is rejected with er
 
 - `name` is only whitespace → rejected; treat as missing.
 - `name` after trimming exceeds the max length → rejected with validation error.
+- **Implementation note (v1):** `.trim()` is not actually applied to `name` or
+  `description` in the live Zod schemas (`CreateBoardInput`/`UpdateBoardInput`)
+  — validation relies on `min(1)` against the raw string. A whitespace-only
+  `name` (e.g. a single space) currently passes validation rather than being
+  rejected as "missing"; the edge case above is not yet enforced as described.
 - `isPublic=false` with `isListed=true` supplied together → rejected with `INVALID_VISIBILITY_COMBINATION` before any DB write.
 - Concurrent requests with the same slug → exactly one succeeds; the other receives `SLUG_TAKEN` (enforced by DB unique constraint, not application-layer check).
 - Auto-generated slug collides → retry with random 4-character suffix up to 5 attempts, then return `SLUG_COLLISION`.
@@ -196,10 +201,10 @@ Any attempt to create or update a board with a reserved slug is rejected with er
 ```ts
 z.object({
   name:        z.string().trim().min(1).max(100),
-  description: z.string().trim().max(1000).optional(),
-  isPublic:    z.boolean().default(true),
-  isListed:    z.boolean().default(true),
-  slug:        z.string().regex(/^[a-z0-9-]+$/).min(2).max(60).optional(),
+  description: z.string().trim().max(500).optional(),
+  isPublic:    z.boolean().default(false),
+  isListed:    z.boolean().default(false),
+  slug:        z.string().regex(/^[a-z0-9-]+$/).min(3).max(50).optional(),
   settings: z.object({
     whoCanPost:             z.enum(['ANYONE', 'AUTHENTICATED', 'ADMINS_ONLY']).default('AUTHENTICATED'),
     guestVotingEnabled:    z.boolean().default(false),
@@ -304,10 +309,16 @@ z.object({ slug: z.string() })
   },
   _count: {
     posts: number,
-    votes: number,  // sum of votes across all posts on this board
+    votes: number,  // currently hardcoded to 0 (see implementation note below)
   },
 }
 ```
+
+**Implementation note (v1):** `_count.votes` is always `0` in the current
+`toAdminBoard()` implementation — it is not computed as a sum across the
+board's posts. Real computation is deferred until the Vote model is fully
+wired into board-level aggregates (tracked alongside the Posts/Voting
+feature).
 
 `boards.getBySlug` is a single procedure. The response shape is determined server-side by the caller's role — no separate `boards.getAdmin` procedure exists.
 
@@ -364,10 +375,10 @@ z.object({ slug: z.string() })
 z.object({
   id:          z.string().cuid(),
   name:        z.string().trim().min(1).max(100).optional(),
-  description: z.string().trim().max(1000).nullish(),
+  description: z.string().trim().max(500).nullish(),
   isPublic:    z.boolean().optional(),
   isListed:    z.boolean().optional(),
-  slug:        z.string().regex(/^[a-z0-9-]+$/).min(2).max(60).optional(),
+  slug:        z.string().regex(/^[a-z0-9-]+$/).min(3).max(50).optional(),
   settings: z.object({
     whoCanPost:             z.enum(['ANYONE', 'AUTHENTICATED', 'ADMINS_ONLY']).optional(),
     guestVotingEnabled:    z.boolean().optional(),
@@ -398,6 +409,10 @@ z.object({
 
 - Board has no posts → deletes cleanly; counts return zero.
 - Very large board (many posts) → deletion is still synchronous and atomic in v1. Code comment required at the implementation site: "migrate to async background job if post count regularly exceeds 1000."
+- **Implementation note (v1):** Comment cascade is deferred until the
+  Comments feature is built (see §4 below and posts.md §8 for the cascade
+  hook point). Board deletion in v1 cascades only `Vote` and `Post` records;
+  `deletedCounts.comments` always returns `0`.
 
 #### Error States
 
@@ -405,14 +420,21 @@ z.object({
 |-----------|--------------------|-----------------------|
 | Board not found | "Board not found." | `logger.info { boardId }` |
 | Not admin | "You don't have permission to delete this board." | `logger.warn { userId, boardId }` |
-| Missing confirmation | "Deletion must be explicitly confirmed." | `logger.info { boardId }` |
+| Confirmation mismatch | "Confirmation does not match the board URL. Please try again." | `logger.info { boardId }` |
 | DB / transaction error | "Something went wrong. The board was not deleted." | `logger.error { err, boardId }` |
 
 #### Security Requirements
 
 - Caller must be authenticated with global admin role.
-- Confirmation flag (`confirm: true`) is mandatory.
-- UI must require the user to type the board name in a confirmation dialog before the API is called.
+- `confirmSlug` is mandatory and must exactly match the board's current slug.
+- UI must require the user to type the board's slug (not its name) in a confirmation dialog before the API is called.
+
+**Implementation note (v1):** The originally specified `confirm: z.literal(true)`
+boolean flag was replaced during implementation with `confirmSlug: z.string()`,
+compared server-side against the board's current `slug`. This is a stronger
+confirmation mechanism (it requires the admin to know/type the exact slug,
+not just acknowledge a checkbox) but is a different field and check than
+decision 13 describes.
 
 #### API Contract
 
@@ -422,8 +444,8 @@ z.object({
 **Input:**
 ```ts
 z.object({
-  id:      z.string().cuid(),
-  confirm: z.literal(true),
+  id:          z.string().cuid(),
+  confirmSlug: z.string(),
 })
 ```
 
@@ -496,7 +518,7 @@ z.object({
 **Output:**
 ```ts
 {
-  items: Array<{
+  boards: Array<{
     id:          string,
     slug:        string,
     name:        string,
@@ -513,6 +535,12 @@ z.object({
   totalPages: number,
 }
 ```
+
+**Implementation note (v1):** The output key is `boards`, not `items` as
+originally specified. Additionally, the `listBoards()` query does not
+currently select `_count` for any row — admin list items do not yet carry a
+post count; only single-board lookups (`boards.getBySlug` admin view,
+`getBoardById`) include `_count`.
 
 ---
 
@@ -545,7 +573,101 @@ z.object({
 
 #### API Contract
 
-Settings updates are handled by `boards.update` (§3.3) via the `settings` sub-object. No separate `boards.updateSettings` procedure exists.
+Settings updates can be made either via `boards.update` (§3.3) using the
+`settings` sub-object, or via the dedicated `boards.updateSettings`
+procedure (§3.8) — both exist in the implementation.
+
+---
+
+### 3.8 Update Board Settings
+
+#### User Story
+> As an admin, I want to update a board's settings independently of its other fields so that I can adjust posting and moderation behaviour without resubmitting the whole board.
+
+#### Implementation Note
+
+Implemented as a dedicated procedure, separate from `boards.update`. It
+performs a partial (shallow-merge) update of the `settings` JSON — fields
+omitted from the input are left unchanged.
+
+#### Error States
+
+| Condition | User-facing message | Logged |
+|-----------|--------------------|-----------------------|
+| Board not found | "Board not found." | `logger.info { boardId }` |
+| Not admin | "You don't have permission to change board settings." | `logger.warn { userId, boardId }` |
+| DB error | "Something went wrong." | `logger.error { err }` |
+
+#### Security Requirements
+
+- Caller must be authenticated with global admin role.
+
+#### API Contract
+
+**Procedure:** `boards.updateSettings`  
+**Type:** `mutation`
+
+**Input:**
+```ts
+z.object({
+  id:       z.string().cuid(),
+  settings: z.object({
+    whoCanPost:             z.enum(['ANYONE', 'AUTHENTICATED', 'ADMINS_ONLY']).optional(),
+    guestVotingEnabled:    z.boolean().optional(),
+    postModerationEnabled: z.boolean().optional(),
+  }),
+})
+```
+
+**Output:** Same shape as `boards.create` output (full updated board, admin view).
+
+---
+
+### 3.9 Reorder Boards
+
+#### User Story
+> As an admin, I want to drag-and-drop boards into a custom order so that the most important boards appear first in the index.
+
+#### Implementation Note
+
+Implements the manual ordering mechanism referenced in decision 15 and §5
+(Board Ordering). Accepts a batch of `{ id, position }` pairs and applies
+them all in a single transaction.
+
+#### Error States
+
+| Condition | User-facing message | Logged |
+|-----------|--------------------|-----------------------|
+| Not admin | "You don't have permission to reorder boards." | `logger.warn { userId }` |
+| DB error | "Something went wrong." | `logger.error { err }` |
+
+#### Security Requirements
+
+- Caller must be authenticated with global admin role.
+- Does not currently verify that all supplied IDs exist or belong to the
+  workspace before writing — tracked as a v1.1 follow-up tied to decision 01.
+
+#### API Contract
+
+**Procedure:** `boards.reorder`  
+**Type:** `mutation`
+
+**Input:**
+```ts
+z.object({
+  updates: z.array(z.object({
+    id:       z.string().cuid(),
+    position: z.number().int().min(0),
+  })).min(1).max(100),
+})
+```
+
+**Output:**
+```ts
+{
+  updated: number,  // count of boards updated
+}
+```
 
 ---
 
@@ -557,7 +679,7 @@ Board deletion is a **hard delete** executed in a **single synchronous DB transa
 Board
  └─ Post[]
      ├─ Vote[]        (on each post)
-     └─ Comment[]     (on each post, including nested replies)
+     └─ Comment[]     (on each post, including nested replies — not yet implemented, see note below)
 ```
 
 Deletion order within the transaction:
@@ -566,6 +688,11 @@ Deletion order within the transaction:
 2. Delete all `Comment` records (including nested replies) on all posts of the board.
 3. Delete all `Post` records on the board.
 4. Delete the `Board` itself.
+
+**Implementation note (v1):** The `Comment` model does not exist yet, so step
+2 above is not implemented. Board deletion in v1 cascades only `Vote` and
+`Post` records, in that order, before deleting the `Board`; `deletedCounts.comments`
+always returns `0` until the Comments feature is built.
 
 **Implementation note (required code comment):** "migrate to async background job if post count regularly exceeds 1000."
 
