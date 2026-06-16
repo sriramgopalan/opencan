@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertCircle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
@@ -27,10 +28,24 @@ function ErrorContent() {
       : baseMessage;
 
   return (
-    <main>
-      <h1>Authentication error</h1>
-      <p role="alert">{message}</p>
-      <a href="/auth/signin">Back to sign in</a>
+    <main className="mx-auto flex max-w-sm flex-col px-4 py-16">
+      <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-md">
+        <div className="mb-4 flex justify-center">
+          <AlertCircle className="h-10 w-10 text-red-500" aria-hidden="true" />
+        </div>
+        <h1 className="mb-3 text-center text-xl font-semibold tracking-tight text-gray-900">
+          Authentication error
+        </h1>
+        <p role="alert" className="text-center text-sm text-gray-600">
+          {message}
+        </p>
+        <a
+          href="/auth/signin"
+          className="mt-6 block w-full rounded-lg bg-blue-600 px-4 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          Back to sign in
+        </a>
+      </div>
     </main>
   );
 }

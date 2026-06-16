@@ -1,9 +1,11 @@
 "use client";
 
+import { AlertCircle, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { VisibilityFieldset } from "@/components/boards/VisibilityFieldset";
+import { Switch } from "@/components/ui/Switch";
 import type { BoardSettings } from "@/lib/board-settings";
 import { api } from "@/lib/trpc";
 import type { AdminBoard } from "@/types/board";
@@ -11,6 +13,10 @@ import type { AdminBoard } from "@/types/board";
 interface Props {
   board: AdminBoard;
 }
+
+const inputClass =
+  "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500";
+const labelClass = "mb-1 block text-sm font-medium text-gray-700";
 
 export function BoardSettingsForm({ board }: Props) {
   const router = useRouter();
@@ -54,9 +60,11 @@ export function BoardSettingsForm({ board }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form onSubmit={handleSubmit} noValidate className="space-y-5">
       <div>
-        <label htmlFor="settings-name">Name</label>
+        <label htmlFor="settings-name" className={labelClass}>
+          Name
+        </label>
         <input
           id="settings-name"
           type="text"
@@ -64,22 +72,28 @@ export function BoardSettingsForm({ board }: Props) {
           onChange={(e) => setName(e.target.value)}
           maxLength={100}
           required
+          className={inputClass}
         />
       </div>
 
       <div>
-        <label htmlFor="settings-description">Description</label>
+        <label htmlFor="settings-description" className={labelClass}>
+          Description
+        </label>
         <textarea
           id="settings-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           maxLength={500}
           rows={3}
+          className={inputClass}
         />
       </div>
 
       <div>
-        <label htmlFor="settings-slug">URL slug</label>
+        <label htmlFor="settings-slug" className={labelClass}>
+          URL slug
+        </label>
         <input
           id="settings-slug"
           type="text"
@@ -87,6 +101,7 @@ export function BoardSettingsForm({ board }: Props) {
           onChange={(e) => setSlug(e.target.value.toLowerCase())}
           maxLength={50}
           required
+          className={inputClass}
         />
       </div>
 
@@ -97,42 +112,66 @@ export function BoardSettingsForm({ board }: Props) {
         onListedChange={setIsListed}
       />
 
-      <fieldset>
-        <legend>Post settings</legend>
+      <fieldset className="space-y-4">
+        <legend className="mb-1 text-sm font-medium text-gray-700">Post settings</legend>
+
         <div>
-          <label htmlFor="who-can-post">Who can post</label>
+          <label htmlFor="who-can-post" className={labelClass}>
+            Who can post
+          </label>
           <select
             id="who-can-post"
             value={whoCanPost}
             onChange={(e) => setWhoCanPost(e.target.value as BoardSettings["whoCanPost"])}
+            className={inputClass}
           >
             <option value="ANYONE">Anyone</option>
             <option value="AUTHENTICATED">Signed-in users</option>
             <option value="ADMINS_ONLY">Admins only</option>
           </select>
         </div>
-        <label>
-          <input
-            type="checkbox"
+
+        <div className="flex items-center justify-between gap-4">
+          <span id="guest-voting-label" className="text-sm text-gray-700">
+            Allow guest voting
+          </span>
+          <Switch
             checked={guestVoting}
-            onChange={(e) => setGuestVoting(e.target.checked)}
+            aria-labelledby="guest-voting-label"
+            onCheckedChange={setGuestVoting}
           />
-          Allow guest voting
-        </label>
-        <label>
-          <input
-            type="checkbox"
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <span id="moderation-label" className="text-sm text-gray-700">
+            Require post approval before publishing
+          </span>
+          <Switch
             checked={moderation}
-            onChange={(e) => setModeration(e.target.checked)}
+            aria-labelledby="moderation-label"
+            onCheckedChange={setModeration}
           />
-          Require post approval before publishing
-        </label>
+        </div>
       </fieldset>
 
-      {error && <p role="alert">{error}</p>}
-      {saved && <p role="status">Settings saved.</p>}
+      {error && (
+        <p role="alert" className="flex items-center gap-1.5 text-sm text-red-600">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+          {error}
+        </p>
+      )}
+      {saved && (
+        <p role="status" className="flex items-center gap-1.5 text-sm text-green-600">
+          <CheckCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+          Settings saved.
+        </p>
+      )}
 
-      <button type="submit" disabled={updateMutation.isPending}>
+      <button
+        type="submit"
+        disabled={updateMutation.isPending}
+        className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+      >
         {updateMutation.isPending ? "Saving…" : "Save settings"}
       </button>
     </form>

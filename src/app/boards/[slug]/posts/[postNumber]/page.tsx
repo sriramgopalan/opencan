@@ -1,3 +1,4 @@
+import { MessageSquare, Pin } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -30,10 +31,7 @@ export default async function PostDetailPage({ params }: Props) {
   const isAdmin = session?.user?.role === "ADMIN";
   const callerId = session?.user?.id;
 
-  const post = await getPostByNumber(slug, num, {
-    isAdmin,
-    callerId,
-  });
+  const post = await getPostByNumber(slug, num, { isAdmin, callerId });
   if (!post) notFound();
 
   const adminPost = isAdmin ? (post as AdminPostView) : null;
@@ -43,24 +41,24 @@ export default async function PostDetailPage({ params }: Props) {
       <nav aria-label="Breadcrumb" className="mb-6">
         <ol className="flex items-center gap-2 text-sm text-gray-500">
           <li>
-            <Link href="/boards" className="hover:text-blue-600">
+            <Link href="/boards" className="hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
               Boards
             </Link>
           </li>
-          <li aria-hidden="true">/</li>
+          <li aria-hidden="true" className="text-gray-300">/</li>
           <li>
-            <Link href={`/boards/${slug}`} className="hover:text-blue-600">
+            <Link href={`/boards/${slug}`} className="hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
               {slug}
             </Link>
           </li>
-          <li aria-hidden="true">/</li>
+          <li aria-hidden="true" className="text-gray-300">/</li>
           <li aria-current="page" className="text-gray-700">
             #{post.postNumber}
           </li>
         </ol>
       </nav>
 
-      <article>
+      <article className="rounded-xl border border-gray-200 bg-white p-6">
         <div className="flex items-start gap-4">
           <VoteButton
             postId={post.id}
@@ -69,11 +67,12 @@ export default async function PostDetailPage({ params }: Props) {
           />
 
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 mb-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
               {post.isPinned && (
-                <span aria-label="Pinned" title="Pinned" className="text-blue-500">
-                  📌
-                </span>
+                <Pin
+                  className="h-4 w-4 fill-blue-500 text-blue-500"
+                  aria-label="Pinned"
+                />
               )}
               <h1 className="text-xl font-bold text-gray-900">{post.title}</h1>
               <StatusBadge status={post.status} />
@@ -97,16 +96,41 @@ export default async function PostDetailPage({ params }: Props) {
         </div>
 
         {post.description && (
-          <div className="mt-6 rounded-md border border-gray-100 bg-gray-50 p-4">
+          <div className="mt-6 rounded-lg border border-gray-100 bg-gray-50 p-4">
             <p className="whitespace-pre-wrap text-sm text-gray-700">{post.description}</p>
           </div>
         )}
       </article>
 
+      <section
+        aria-label="Comments"
+        className="mt-6 rounded-xl border border-dashed border-gray-200 p-6"
+      >
+        <div className="flex items-center gap-2 text-gray-400">
+          <MessageSquare className="h-4 w-4" aria-hidden="true" />
+          <p className="text-sm">Comments coming soon</p>
+        </div>
+      </section>
+
+      {isAdmin && (
+        <section
+          aria-labelledby="admin-actions-heading"
+          className="mt-6 rounded-xl border border-gray-200 bg-white p-6"
+        >
+          <h2
+            id="admin-actions-heading"
+            className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500"
+          >
+            Admin actions
+          </h2>
+          <p className="text-sm text-gray-400">Status management coming soon</p>
+        </section>
+      )}
+
       <footer className="mt-8">
         <Link
           href={`/boards/${slug}`}
-          className="text-sm text-blue-600 hover:underline"
+          className="text-sm text-blue-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           ← Back to board
         </Link>
