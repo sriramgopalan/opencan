@@ -4,6 +4,7 @@ import superjson from "superjson";
 
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { rateLimit } from "@/lib/rate-limit";
 
 
 export type Context = {
@@ -60,3 +61,14 @@ export const createCallerFactory = t.createCallerFactory;
 export const publicProcedure = t.procedure;
 export const protectedProcedure = t.procedure.use(authMiddleware);
 export const adminProcedure = protectedProcedure.use(adminMiddleware);
+
+export async function applyRateLimit(key: string, max: number, windowSeconds: number): Promise<void> {
+  try {
+    await rateLimit(key, { max, windowSeconds });
+  } catch (e) {
+    if (e instanceof AppError && e.code === "RATE_LIMITED") {
+      throw new TRPCError({ code: "TOO_MANY_REQUESTS", cause: e });
+    }
+    throw e;
+  }
+}

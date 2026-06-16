@@ -5,7 +5,8 @@ export type AppErrorCode =
   | "VALIDATION_ERROR"
   | "CONFLICT"
   | "RATE_LIMITED"
-  | "INTERNAL_ERROR";
+  | "INTERNAL_ERROR"
+  | "INVALID_STATUS_TRANSITION";
 
 export class AppError extends Error {
   constructor(

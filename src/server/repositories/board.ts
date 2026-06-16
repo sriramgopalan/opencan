@@ -63,14 +63,12 @@ const ADMIN_BOARD_SELECT = {
   ownerId: true,
   position: true,
   updatedAt: true,
+  _count: { select: { posts: true } },
 } as const;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-// TODO: replace with real counts when Post model is added
-const STUB_COUNTS = { posts: 0, votes: 0 } as const;
 
 function parseSettings(raw: Prisma.JsonValue): BoardSettings {
   return BoardSettingsSchema.parse(raw ?? {});
@@ -98,28 +96,26 @@ function toSafeBoard(row: {
   };
 }
 
-function toAdminBoard(
-  row: {
-    id: string;
-    slug: string;
-    name: string;
-    description: string | null;
-    isPublic: boolean;
-    isListed: boolean;
-    settingsJson: Prisma.JsonValue;
-    createdAt: Date;
-    ownerId: string;
-    position: number;
-    updatedAt: Date;
-  },
-  counts: { posts: number; votes: number },
-): AdminBoard {
+function toAdminBoard(row: {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  isPublic: boolean;
+  isListed: boolean;
+  settingsJson: Prisma.JsonValue;
+  createdAt: Date;
+  ownerId: string;
+  position: number;
+  updatedAt: Date;
+  _count: { posts: number };
+}): AdminBoard {
   return {
     ...toSafeBoard(row),
     ownerId: row.ownerId,
     position: row.position,
     updatedAt: row.updatedAt,
-    _count: counts,
+    _count: { posts: row._count.posts, votes: 0 },
   };
 }
 
@@ -146,8 +142,7 @@ function buildOrderBy(
   order: "asc" | "desc",
 ): Prisma.BoardOrderByWithRelationInput[] {
   if (orderBy === "name") return [{ name: order }, { position: "asc" }];
-  // TODO: order by _count.posts when Post model is added
-  if (orderBy === "postCount") return [{ position: "asc" }, { createdAt: "desc" }];
+  if (orderBy === "postCount") return [{ posts: { _count: order } }, { position: "asc" }];
   return [{ createdAt: order }, { position: "asc" }];
 }
 
@@ -187,13 +182,13 @@ export async function getBoardBySlug(slug: string): Promise<SafeBoard | null> {
 export async function getBoardBySlugAdmin(slug: string): Promise<AdminBoard | null> {
   const row = await prisma.board.findUnique({ where: { slug }, select: ADMIN_BOARD_SELECT });
   if (!row) return null;
-  return toAdminBoard(row, STUB_COUNTS);
+  return toAdminBoard(row);
 }
 
 export async function getBoardById(id: string): Promise<AdminBoard | null> {
   const row = await prisma.board.findUnique({ where: { id }, select: ADMIN_BOARD_SELECT });
   if (!row) return null;
-  return toAdminBoard(row, STUB_COUNTS);
+  return toAdminBoard(row);
 }
 
 export async function listBoards(opts: ListBoardsOptions = {}): Promise<BoardListResult> {
@@ -261,7 +256,7 @@ export async function createBoard(input: CreateBoardInput): Promise<AdminBoard> 
         select: ADMIN_BOARD_SELECT,
       });
     });
-    return toAdminBoard(row, STUB_COUNTS);
+    return toAdminBoard(row);
   } catch (e) {
     handleWriteError(e);
   }
@@ -289,7 +284,7 @@ export async function updateBoard(id: string, data: UpdateBoardData): Promise<Ad
 
   try {
     const row = await prisma.board.update({ where: { id }, data: update, select: ADMIN_BOARD_SELECT });
-    return toAdminBoard(row, STUB_COUNTS);
+    return toAdminBoard(row);
   } catch (e) {
     handleWriteError(e);
   }
@@ -298,12 +293,11 @@ export async function updateBoard(id: string, data: UpdateBoardData): Promise<Ad
 export async function deleteBoard(id: string): Promise<DeleteBoardResult> {
   // migrate to async background job if post count regularly exceeds 1000
   const result = await prisma.$transaction(async (tx) => {
-    // TODO: cascade delete votes, comments, posts when Post model is added
-    // const votes = await tx.vote.deleteMany({ where: { post: { boardId: id } } });
-    // const comments = await tx.comment.deleteMany({ where: { post: { boardId: id } } });
-    // const posts = await tx.post.deleteMany({ where: { boardId: id } });
+    const votes = await tx.vote.deleteMany({ where: { post: { boardId: id } } });
+    // TODO: add tx.comment.deleteMany here when Comments feature is built (posts.md §8)
+    const posts = await tx.post.deleteMany({ where: { boardId: id } });
     const board = await tx.board.delete({ where: { id }, select: { id: true, slug: true } });
-    return { board, posts: 0, votes: 0, comments: 0 };
+    return { board, posts: posts.count, votes: votes.count, comments: 0 };
   });
   return {
     id: result.board.id,

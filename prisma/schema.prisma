@@ -13,6 +13,16 @@ enum Plan {
   ENTERPRISE
 }
 
+enum PostStatus {
+  PENDING
+  OPEN
+  UNDER_REVIEW
+  PLANNED
+  IN_PROGRESS
+  SHIPPED
+  CLOSED
+}
+
 model User {
   id               String    @id @default(cuid())
   email            String    @unique // PII: primary identifier
@@ -30,6 +40,8 @@ model User {
   sessions    Session[]
   memberships OrganizationMember[]
   boards      Board[]
+  posts       Post[]
+  votes       Vote[]
 
   @@index([email])
   @@index([lockedUntil])
@@ -113,10 +125,55 @@ model Board {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  owner User   @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  posts Post[]
 
   @@index([slug])
   @@index([isPublic, isListed])
   @@index([ownerId])
   @@index([position])
+}
+
+model Post {
+  id          String     @id @default(cuid())
+  postNumber  Int
+  boardId     String
+  authorId    String?
+  guestName   String?
+  title       String     @db.Text
+  description String?    @db.Text
+  status      PostStatus @default(OPEN)
+  isPinned    Boolean    @default(false)
+  pinnedAt    DateTime?
+  voteCount   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  board  Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  author User?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  votes  Vote[]
+
+  @@unique([boardId, postNumber])
+  @@index([boardId, status])
+  @@index([boardId, voteCount])
+  @@index([boardId, createdAt])
+  @@index([boardId, isPinned])
+  @@index([authorId])
+  @@index([boardId, status, voteCount])
+  @@index([boardId, isPinned, voteCount])
+  // GIN trigram index on title (pg_trgm) managed via migration SQL — not declarable in Prisma schema
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String? // null for guest votes; guest dedup via Redis (privacy.md prohibits storing IP in DB)
+  createdAt DateTime @default(now())
+
+  post Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
 }

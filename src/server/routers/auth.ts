@@ -11,7 +11,6 @@ import {
 import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { rateLimit } from "@/lib/rate-limit";
 import { prisma } from "@/server/db";
 import { invalidateAllUserSessionCaches } from "@/server/repositories/session";
 import {
@@ -31,6 +30,7 @@ import {
   generateToken,
 } from "@/server/repositories/verificationToken";
 import {
+  applyRateLimit,
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
@@ -50,12 +50,9 @@ export const authRouter = createTRPCRouter({
     .output(z.object({ sent: z.literal(true) }))
     .mutation(async ({ input, ctx }) => {
       // IP rate limit: 10 requests per hour
-      await rateLimit(`auth:ip:${ctx.ip}`, { max: 10, windowSeconds: 3600 });
+      await applyRateLimit(`auth:ip:${ctx.ip}`, 10, 3600);
       // Per-email rate limit: 5 per 10 minutes
-      await rateLimit(`auth:email:${input.email}`, {
-        max: 5,
-        windowSeconds: 600,
-      });
+      await applyRateLimit(`auth:email:${input.email}`, 5, 600);
 
       // Auto-register if no account exists
       let user = await getUserByEmail(input.email);
@@ -181,7 +178,7 @@ export const authRouter = createTRPCRouter({
     .mutation(async ({ ctx }) => {
       const email = ctx.session.user.email ?? "";
 
-      await rateLimit(`auth:email:${email}`, { max: 5, windowSeconds: 600 });
+      await applyRateLimit(`auth:email:${email}`, 5, 600);
 
       await issueEmailVerification(email, ctx.session.user.id);
 
