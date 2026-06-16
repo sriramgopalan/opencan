@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DeepMockProxy } from "vitest-mock-extended";
 import { mockReset } from "vitest-mock-extended";
 
+import { env } from "@/lib/env";
 import { makeFullRedisMock } from "@/tests/helpers/auth-setup";
 
 let prismaMock: DeepMockProxy<PrismaClient>;
@@ -51,7 +52,7 @@ const SAFE_USER = {
   createdAt: new Date(),
 };
 
-function makeSession(userId = "user-1", email = "user@example.com", role = "MEMBER") {
+function makeSession(userId = "user-1", email: string | null = "user@example.com", role = "MEMBER") {
   return {
     user: { id: userId, email, name: null, image: null, role },
     expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -125,23 +126,48 @@ describe("authRouter", () => {
         "magic link email failed",
       );
     });
+
+    it("falls back to localhost base URL when AUTH_URL is not configured", async () => {
+      const originalAuthUrl = env.AUTH_URL;
+      env.AUTH_URL = undefined;
+      try {
+        prismaMock.user.findUnique.mockResolvedValue(SAFE_USER as never);
+        prismaMock.verificationToken.deleteMany.mockResolvedValue({ count: 0 });
+        prismaMock.verificationToken.create.mockResolvedValue({} as never);
+
+        const caller = createCaller({ session: null, ip: "127.0.0.1" });
+        const result = await caller.requestMagicLink({ email: "user@example.com" });
+
+        expect(result).toEqual({ sent: true });
+        expect(vi.mocked(sendMagicLinkEmail)).toHaveBeenCalledWith(
+          "user@example.com",
+          expect.stringContaining("http://localhost:3000"),
+        );
+      } finally {
+        env.AUTH_URL = originalAuthUrl;
+      }
+    });
   });
+
+  function setupChangePasswordMocks(activeSessionCount = 0) {
+    vi.mocked(verify).mockResolvedValue(true);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: "user-1",
+      passwordHash: "old-hash",
+      failedLoginCount: 0,
+      lockedUntil: null,
+    } as never);
+    prismaMock.session.findMany.mockResolvedValue(
+      (activeSessionCount > 0 ? [{ sessionToken: "tok-1" }] : []) as never,
+    );
+    redisMock.smembers.mockResolvedValue(activeSessionCount > 0 ? ["tok-1"] : []);
+    redisMock.del.mockResolvedValue(activeSessionCount);
+    prismaMock.$transaction.mockResolvedValue([{ count: activeSessionCount }, {}] as never);
+  }
 
   describe("changePassword", () => {
     it("changes password and invalidates sessions", async () => {
-      vi.mocked(verify).mockResolvedValue(true);
-      prismaMock.user.findUnique.mockResolvedValue({
-        id: "user-1",
-        passwordHash: "old-hash",
-        failedLoginCount: 0,
-        lockedUntil: null,
-      } as never);
-      prismaMock.session.findMany.mockResolvedValue([
-        { sessionToken: "tok-1" } as never,
-      ]);
-      redisMock.smembers.mockResolvedValue(["tok-1"]);
-      redisMock.del.mockResolvedValue(1);
-      prismaMock.$transaction.mockResolvedValue([{ count: 1 }, {}] as never);
+      setupChangePasswordMocks(1);
 
       const caller = createCaller({ session: makeSession(), ip: "127.0.0.1" });
       const result = await caller.changePassword({
@@ -203,17 +229,7 @@ describe("authRouter", () => {
     });
 
     it("logs error and still succeeds when password-changed email fails", async () => {
-      vi.mocked(verify).mockResolvedValue(true);
-      prismaMock.user.findUnique.mockResolvedValue({
-        id: "user-1",
-        passwordHash: "old-hash",
-        failedLoginCount: 0,
-        lockedUntil: null,
-      } as never);
-      prismaMock.session.findMany.mockResolvedValue([]);
-      redisMock.smembers.mockResolvedValue([]);
-      redisMock.del.mockResolvedValue(0);
-      prismaMock.$transaction.mockResolvedValue([{ count: 0 }, {}] as never);
+      setupChangePasswordMocks();
       vi.mocked(sendPasswordChangedEmail).mockRejectedValueOnce(new Error("smtp error"));
 
       const caller = createCaller({ session: makeSession(), ip: "127.0.0.1" });
@@ -228,6 +244,23 @@ describe("authRouter", () => {
         expect.objectContaining({ err: expect.any(Error) }),
         "password changed email failed",
       );
+    });
+
+    it("falls back to an empty string when session has no email", async () => {
+      setupChangePasswordMocks();
+
+      const caller = createCaller({ session: makeSession("user-1", null), ip: "127.0.0.1" });
+      const result = await caller.changePassword({
+        currentPassword: "old-password-123",
+        newPassword: "new-password-456789",
+      });
+
+      expect(result).toEqual({ success: true });
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { email: "" } }),
+      );
+      await new Promise((r) => setTimeout(r, 0));
+      expect(vi.mocked(sendPasswordChangedEmail)).toHaveBeenCalledWith("");
     });
   });
 
@@ -283,6 +316,17 @@ describe("authRouter", () => {
         "account deleted email failed",
       );
     });
+
+    it("falls back to an empty string when session has no email", async () => {
+      setupDeleteAccountMocks();
+
+      const caller = createCaller({ session: makeSession("user-1", null), ip: "127.0.0.1" });
+      const result = await caller.deleteAccount({ confirmation: "delete my account" });
+
+      expect(result).toEqual({ success: true });
+      await new Promise((r) => setTimeout(r, 0));
+      expect(vi.mocked(sendAccountDeletedEmail)).toHaveBeenCalledWith("");
+    });
   });
 
   describe("resendVerification", () => {
@@ -318,6 +362,17 @@ describe("authRouter", () => {
         expect.objectContaining({ err: expect.any(Error) }),
         "verification email failed",
       );
+    });
+
+    it("falls back to an empty string when session has no email", async () => {
+      prismaMock.verificationToken.deleteMany.mockResolvedValue({ count: 0 });
+      prismaMock.verificationToken.create.mockResolvedValue({} as never);
+
+      const caller = createCaller({ session: makeSession("user-1", null), ip: "127.0.0.1" });
+      const result = await caller.resendVerification({});
+
+      expect(result).toEqual({ sent: true });
+      expect(vi.mocked(sendVerificationEmail)).toHaveBeenCalledWith("", expect.any(String));
     });
   });
 });

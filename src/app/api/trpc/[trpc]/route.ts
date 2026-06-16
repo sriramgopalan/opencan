@@ -4,6 +4,9 @@ import { auth } from "@/auth";
 import { appRouter } from "@/server/routers/_app";
 import type { Context } from "@/server/trpc";
 
+// DEPLOYMENT REQUIREMENT: reverse proxy must overwrite x-forwarded-for with the
+// real client IP. Without this, guest vote deduplication can be bypassed by
+// spoofing the XFF header. See docs/deployment-requirements.md
 function getIp(req: Request): string {
   return (
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??

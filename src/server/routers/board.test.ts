@@ -41,6 +41,7 @@ const BASE_BOARD_ROW = {
   ownerId: OWNER_ID,
   position: 0,
   updatedAt: new Date("2024-01-01"),
+  _count: { posts: 0 },
 };
 
 
@@ -138,6 +139,7 @@ describe("boardRouter", () => {
       prismaMock.board.create.mockResolvedValue({
         ...BASE_BOARD_ROW,
         slug: "my-board-abcd",
+        _count: { posts: 0 },
       } as never);
       const caller = createCaller(createAdminContext("admin-1"));
       const result = await caller.create({ name: "My Board", isPublic: false, isListed: false });
@@ -335,6 +337,8 @@ describe("boardRouter", () => {
       prismaMock.board.findUnique.mockResolvedValue(BASE_BOARD_ROW as never);
       prismaMock.$transaction.mockImplementation((async (fn: (tx: unknown) => Promise<unknown>) => {
         const txMock = {
+          vote: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+          post: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
           board: {
             delete: vi.fn().mockResolvedValue({ id: BOARD_ID, slug: "my-board" }),
           },

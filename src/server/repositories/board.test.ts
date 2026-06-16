@@ -39,6 +39,7 @@ const BASE_ROW = {
   ownerId: "user-1",
   position: 0,
   updatedAt: new Date("2024-01-01"),
+  _count: { posts: 0 },
 };
 
 describe("board repository", () => {
@@ -124,7 +125,7 @@ describe("board repository", () => {
       expect(await getBoardBySlugAdmin("missing")).toBeNull();
     });
 
-    it("includes stub _count", async () => {
+    it("includes _count with real post count", async () => {
       prismaMock.board.findUnique.mockResolvedValue(BASE_ROW as never);
       const result = await getBoardBySlugAdmin("my-board");
       expect(result?._count).toEqual({ posts: 0, votes: 0 });
@@ -207,13 +208,13 @@ describe("board repository", () => {
       );
     });
 
-    it("orders by position/createdAt when orderBy is 'postCount'", async () => {
+    it("orders by post count when orderBy is 'postCount'", async () => {
       prismaMock.board.findMany.mockResolvedValue([]);
       prismaMock.board.count.mockResolvedValue(0);
       await listBoards({ orderBy: "postCount" });
       expect(prismaMock.board.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: [{ position: "asc" }, { createdAt: "desc" }],
+          orderBy: [{ posts: { _count: "desc" } }, { position: "asc" }],
         }),
       );
     });
@@ -240,7 +241,7 @@ describe("board repository", () => {
         ownerId: "user-1",
       });
       expect(result.slug).toBe("my-board");
-      expect(result._count).toEqual({ posts: 0, votes: 0 });
+      expect(result._count.posts).toBe(0);
     });
 
     it("assigns position 0 when no boards exist", async () => {
@@ -360,9 +361,11 @@ describe("board repository", () => {
   // ---------------------------------------------------------------------------
 
   describe("deleteBoard", () => {
-    it("deletes board in a transaction and returns result", async () => {
+    it("deletes votes and posts then board in a transaction", async () => {
       prismaMock.$transaction.mockImplementation((async (fn: (tx: unknown) => Promise<unknown>) => {
         const txMock = {
+          vote: { deleteMany: vi.fn().mockResolvedValue({ count: 3 }) },
+          post: { deleteMany: vi.fn().mockResolvedValue({ count: 2 }) },
           board: {
             delete: vi.fn().mockResolvedValue({ id: "board-1", slug: "my-board" }),
           },
@@ -373,7 +376,7 @@ describe("board repository", () => {
       const result = await deleteBoard("board-1");
       expect(result.id).toBe("board-1");
       expect(result.slug).toBe("my-board");
-      expect(result.deletedCounts).toEqual({ posts: 0, votes: 0, comments: 0 });
+      expect(result.deletedCounts).toEqual({ posts: 2, votes: 3, comments: 0 });
     });
   });
 

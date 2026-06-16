@@ -1,3 +1,6 @@
+// DEPLOYMENT REQUIREMENT: reverse proxy must overwrite x-forwarded-for with the
+// real client IP. Without this, guest vote deduplication can be bypassed by
+// spoofing the XFF header. See docs/deployment-requirements.md
 import { AppError } from "@/lib/errors";
 import { redis } from "@/lib/redis";
 
