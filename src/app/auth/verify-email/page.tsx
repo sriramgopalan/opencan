@@ -27,9 +27,9 @@ function VerifyEmailContent() {
           setStatus("success");
           setMessage("Your email has been verified. You can now sign in.");
         } else {
-          const data = (await res.json()) as { message?: string };
+          const data = (await res.json()) as { error?: string };
           setStatus("error");
-          setMessage(data.message ?? "Verification failed.");
+          setMessage(data.error ?? "Verification failed.");
         }
       })
       .catch(() => {
