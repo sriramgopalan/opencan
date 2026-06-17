@@ -22,15 +22,11 @@
 | A-10 | Admin cannot self-modify via admin panel | An admin cannot suspend, delete, or change the role of their own account via `admin.*` procedures — use the user-facing settings pages for that. |
 | A-11 | Pending posts sort order | Oldest first (`createdAt ASC`) — first submitted, first reviewed. |
 
-### Open questions — flag before implementation
-
-| # | Question |
-|---|---------|
-| Q-01 | Should suspension also prevent OAuth sign-in (Google/GitHub) in addition to credentials and magic link? All auth paths need to check `suspendedAt` — confirm scope before implementing the NextAuth callback changes. |
-| Q-02 | Should the post moderation view surface a **Delete** action in addition to Approve/Reject, or is deletion deferred to the individual post detail page? |
-| Q-03 | Should `admin.updateUserRole` prevent an admin from demoting themselves? (Currently covered by A-10 but worth explicit confirmation.) |
-| Q-04 | The per-userId blocklist logs out all devices simultaneously. Is this the intended UX for role changes (e.g. promoting a user to admin logs them out everywhere)? Or should promotion not trigger invalidation? |
-| Q-05 | `admin.getStats` — should `totalVotes` be a count of all `Vote` rows (which represent active, non-retracted votes), or should it be the sum of `Post.voteCount` across all posts? Both should be equivalent but the latter avoids a full `Vote` table scan. |
+| A-12 | Suspension blocks all auth methods | Suspension prevents sign-in via credentials, Google OAuth, GitHub OAuth, and magic link. The `signIn` NextAuth callback and the `CredentialsProvider.authorize` callback both check `suspendedAt`. No auth path is exempt. |
+| A-13 | Moderation queue actions | The moderation queue exposes **Approve** and **Reject** only. No Delete action. Post deletion is available from the individual post detail page. |
+| A-14 | Admin self-role change | Confirmed: an admin cannot change their own role via `admin.updateUserRole`. The UI disables the role toggle for the currently signed-in admin. The procedure rejects self-targeting with `FORBIDDEN`. |
+| A-15 | Blocklist on role promotion | Both promotion (`MEMBER → ADMIN`) and demotion (`ADMIN → MEMBER`) trigger blocklist invalidation. On promotion, the user needs a fresh JWT with the elevated role to access admin features. On demotion, immediate removal of admin access is required. |
+| A-16 | `totalVotes` implementation | Sum of `Post.voteCount` across all posts (`prisma.post.aggregate({ _sum: { voteCount: true } })`). Avoids a full `Vote` table scan. The `voteCount` field is already denormalised and kept in sync on every vote toggle (posts.md §9). |
 
 ---
 
@@ -59,7 +55,7 @@
 2. The page displays the following stats, fetched live on each page load:
    - Total boards (public + private)
    - Total posts (all statuses, including PENDING)
-   - Total votes (count of all `Vote` rows)
+   - Total votes (sum of `Post.voteCount` across all posts)
    - Total comments (count of all `Comment` rows)
    - Total registered users
    - New posts created in the last 30 days
@@ -91,6 +87,7 @@
 ### Implementation Notes
 
 - All counts are fetched in parallel: `await Promise.all([prisma.board.count(), prisma.post.count(), …])`.
+- `totalVotes` uses `prisma.post.aggregate({ _sum: { voteCount: true } })` — avoids a full `Vote` table scan (decision A-16). `_sum.voteCount ?? 0` handles the null case when no posts exist.
 - "Last 30 days" window: `createdAt >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)`.
 - Repository function: `src/server/repositories/admin.ts → getWorkspaceStats()`.
 
@@ -196,7 +193,7 @@ z.object({
 { id: string, role: string }
 ```
 
-**Side effects:** Calls `addToBlocklist(userId, TTL_30_DAYS)` after a successful DB update (decision A-02).
+**Side effects:** Calls `addToBlocklist(userId, TTL_30_DAYS)` after a successful DB update for **both promotion and demotion** (decision A-15). If the role is unchanged (no-op), no DB write and no blocklist call are made.
 
 **Error states:**
 
@@ -204,7 +201,7 @@ z.object({
 |-----------|------|---------|
 | User not found | `NOT_FOUND` | "User not found." |
 | Caller is target | `FORBIDDEN` | "You cannot change your own role." |
-| No-op (same role) | — | Return current state; no DB write; no blocklist call |
+| No-op (same role supplied) | — | Return current state; no DB write; no blocklist call |
 
 **Logging:** `{ adminId, targetUserId, oldRole, newRole }`
 
@@ -581,5 +578,5 @@ All routes live under `src/app/(protected)/admin/`. The `layout.tsx` at this lev
 | Bulk actions (multi-select) | Deferred |
 | Admin-initiated password reset | User uses the forgot-password flow |
 | Granular per-device session revocation | Per-JTI revocation deferred (see §6) |
-| Post deletion from the moderation queue | Available on the individual post detail page (open question Q-02) |
+| Post deletion from the moderation queue | Available on the individual post detail page only; not surfaced in the queue (decision A-13) |
 | Analytics charts / time-series | Counts only in v1; chart visualisations deferred |
