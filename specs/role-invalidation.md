@@ -1,7 +1,7 @@
 # Role Invalidation Spec
 
 ## Status
-DEFERRED — implement when admin user management feature is built
+SUPERSEDED — implementation incorporated into specs/admin.md (decisions A-02, A-03, A-15). The per-JTI approach described here was replaced with a per-userId blocklist; see admin.md §6 for the final design.
 
 ## Problem
 When an admin changes a user's role in the database, the user's 

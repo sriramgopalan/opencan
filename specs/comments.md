@@ -1,5 +1,7 @@
 # Comments — Feature Spec
 
+**Status:** ACCEPTED
+
 ## 1. Overview
 
 Comments allow users (authenticated or guest, subject to board settings) to reply to Posts with short text messages. They are flat (no threading), scoped to Posts, always ordered oldest-first, and subject to the same `whoCanPost` gate as the parent Post's board. The author of a comment may edit or delete their own comment (authenticated authors only — guests cannot edit/delete); admins may edit or delete any comment. Comments are always immediately visible (no moderation queue in v1).
