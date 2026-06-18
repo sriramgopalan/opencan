@@ -7,7 +7,7 @@ services:
       - "3000:3000"
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/etash
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/opencan
       REDIS_URL: redis://redis:6379
       MINIO_ENDPOINT: minio
       MINIO_PORT: "9000"
@@ -26,7 +26,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: etash
+      POSTGRES_DB: opencan
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

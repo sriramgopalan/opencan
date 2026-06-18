@@ -15,7 +15,7 @@ export async function SiteNav() {
           href="/"
           className="text-base font-semibold tracking-tight text-gray-900 transition-colors hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          Etash
+          OpenCan
         </Link>
 
         {email ? (

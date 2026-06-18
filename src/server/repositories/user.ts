@@ -99,7 +99,7 @@ export async function anonymiseUser(userId: string): Promise<void> {
   await prisma.user.update({
     where: { id: userId },
     data: {
-      email: `deleted-${anonId}@deleted.etash.com`,
+      email: `deleted-${anonId}@deleted.opencan.dev`,
       name: null,
       image: null,
       passwordHash: null,

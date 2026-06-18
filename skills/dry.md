@@ -1,4 +1,4 @@
-# DRY / code quality skill — Etash project
+# DRY / code quality skill — OpenCan project
 
 These rules apply to **every file generated**. Do not wait to be asked.
 

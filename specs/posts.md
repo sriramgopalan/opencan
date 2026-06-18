@@ -1,6 +1,6 @@
 # Spec: Posts
 
-**Application:** Etash — Customer Feedback  
+**Application:** OpenCan — Customer Feedback  
 **Version:** 0.2  
 **Status:** ACCEPTED
 

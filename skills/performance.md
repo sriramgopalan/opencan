@@ -1,4 +1,4 @@
-# Performance skill — Etash project
+# Performance skill — OpenCan project
 
 Target metrics: **LCP < 2.5 s · INP < 200 ms · CLS < 0.1**
 API targets: **p95 reads < 200 ms · p95 writes < 500 ms**

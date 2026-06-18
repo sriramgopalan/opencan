@@ -35,4 +35,4 @@ openssl rand -hex 32
 
 This secret is used as the HMAC key when hashing client IPs for Redis guest vote dedup keys. Without a unique secret, the SHA-256 hashes are reversible via precomputed tables (the IPv4 space is small).
 
-If not set, the application falls back to `"etash-default-salt"` which provides no meaningful security.
+If not set, the application falls back to `"opencan-default-salt"` which provides no meaningful security.

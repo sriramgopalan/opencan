@@ -1,4 +1,4 @@
-title = "Gitleaks configuration for etash"
+title = "Gitleaks configuration for opencan"
 
 [extend]
 # Use the default gitleaks ruleset as the base

@@ -1,6 +1,6 @@
 # Spec: Admin Dashboard
 
-**Application:** Etash — Customer Feedback  
+**Application:** OpenCan — Customer Feedback  
 **Version:** 0.1  
 **Status:** ACCEPTED
 

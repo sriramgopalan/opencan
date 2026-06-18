@@ -13,7 +13,7 @@ const schema = z
     RESEND_FROM: z.string().email(),
     REDIS_URL: z.string().min(1),
     // Random 32-byte hex string for HMAC IP hashing. Generate: openssl rand -hex 32
-    IP_HASH_SECRET: z.string().default("etash-default-salt"),
+    IP_HASH_SECRET: z.string().default("opencan-default-salt"),
     LOG_LEVEL: z
       .enum(["fatal", "error", "warn", "info", "debug", "trace"])
       .default("info"),

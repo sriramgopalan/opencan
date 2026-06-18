@@ -13,7 +13,7 @@ Next.js 16 App Router · NextAuth v5 · Prisma / PostgreSQL · Redis · tRPC · 
 
 ## Scope
 
-This spec covers all authentication and session management for the Etash
+This spec covers all authentication and session management for the OpenCan
 application. In scope for v1:
 
 - Email + password authentication
@@ -323,7 +323,7 @@ model OrganizationMember {
 3. If not found or expired: render error page — "This link has expired or
    has already been used. Request a new one."
 4. If valid: render confirmation page — "Click the button below to sign in
-   to Etash." with a "Sign in" button. **Do not create a session here.**
+   to OpenCan." with a "Sign in" button. **Do not create a session here.**
 5. User clicks "Sign in": `POST /auth/magic-link/confirm` with the token
    (submitted from the confirmation page form).
 6. Server re-validates the token (same hash lookup).

@@ -1,4 +1,4 @@
-# Privacy skill — Etash project
+# Privacy skill — OpenCan project
 
 This product handles customer feedback data and operates a managed hosting tier
 subject to GDPR. These rules apply to **every file generated**. Do not wait to
@@ -54,7 +54,7 @@ await prisma.$transaction([
 Anonymisation format for any field that previously held the user's email:
 
 ```
-deleted-{cuid}@deleted.etash.com
+deleted-{cuid}@deleted.opencan.dev
 ```
 
 Use `cuid()` (from the `@paralleldrive/cuid2` package) so anonymised rows

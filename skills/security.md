@@ -1,4 +1,4 @@
-# Security skill — Etash project
+# Security skill — OpenCan project
 
 These rules apply to **every file generated**. Do not wait to be asked.
 
