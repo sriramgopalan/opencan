@@ -10,7 +10,7 @@ interface Props {
 
 export function BoardCard({ board, adminView = false }: Props) {
   const href = adminView
-    ? `/dashboard/boards/${board.slug}/settings`
+    ? `/admin/boards/${board.slug}/settings`
     : `/boards/${board.slug}`;
 
   return (
