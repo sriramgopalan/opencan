@@ -1,9 +1,7 @@
-
-import type { PrismaClient } from "@prisma/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mockReset, type DeepMockProxy } from "vitest-mock-extended";
 
 import { prisma } from "@/server/db";
+import { mockReset, type DeepMockProxy, type PrismaClient } from "@/tests/helpers/repository-setup";
 
 vi.mock("@/server/db");
 
