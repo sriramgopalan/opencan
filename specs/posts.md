@@ -71,12 +71,14 @@ Post {
   isPinned      Boolean     @default(false)
   pinnedAt      DateTime?                              // set when isPinned flips to true; cleared on unpin
   voteCount     Int         @default(0)               // denormalised; kept in sync on every vote change
+  commentCount  Int         @default(0)               // denormalised; incremented/decremented by comments.create/delete
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
   board         Board       @relation(...)
   author        User?       @relation(...)
   votes         Vote[]
+  comments      Comment[]
 
   @@unique([boardId, postNumber])
   @@index([boardId, status])
@@ -194,7 +196,8 @@ Limits are enforced at the Zod input schema layer (tRPC procedure input). Both f
 #### API Contract
 
 **Procedure:** `posts.create`  
-**Type:** `mutation`
+**Type:** `mutation`  
+**Rate limit:** 10 requests per IP per hour
 
 **Input:**
 ```ts
@@ -336,7 +339,8 @@ z.object({ id: z.string() })
 #### API Contract
 
 **Procedure:** `posts.update`  
-**Type:** `mutation`
+**Type:** `mutation`  
+**Rate limit:** 20 requests per IP per hour
 
 **Input:**
 ```ts
@@ -347,7 +351,7 @@ z.object({
 })
 ```
 
-**Output:** Same shape as `posts.getById` admin view.
+**Output:** Admin callers receive the full admin view (includes `authorId`, `author.email`, `pinnedAt`, `updatedAt`). Non-admin callers receive a stripped public view (no `authorId`, no `author.email`).
 
 ---
 
@@ -517,7 +521,9 @@ z.object({
 ```ts
 z.object({
   id:     z.string(),
-  status: z.enum(["OPEN","UNDER_REVIEW","PLANNED","IN_PROGRESS","SHIPPED","CLOSED"]),
+  status: z.enum(["OPEN","UNDER_REVIEW","PLANNED","IN_PROGRESS","SHIPPED","CLOSED","PENDING"]),
+  // "PENDING" is accepted by the Zod schema but rejected at runtime with
+  // INVALID_STATUS_TRANSITION — it cannot be manually assigned via this procedure.
 })
 ```
 
@@ -660,7 +666,8 @@ Detection is **client-side warning only** (P-06). The server does not block post
 ### 5.1 Query
 
 **Procedure:** `posts.getSimilar`  
-**Type:** `query`
+**Type:** `query`  
+**Rate limit:** 30 requests per IP per minute
 
 **Input:**
 ```ts

@@ -12,14 +12,14 @@
 |---|-------|------------|
 | A-01 | Admin area replaces `/dashboard` | `/admin` is the new home for all admin-only features. `/dashboard` is removed entirely. `admin` is already a reserved board slug (boards.md decision 08) so no slug conflict exists. |
 | A-02 | Session blocklist scope | Blocklist by `userId` (not JTI), key `session:blocklist:user:{userId}`, TTL = 30 days (the JWT `maxAge` from auth.md decision 8). This invalidates all active sessions for a user simultaneously. Per-JTI revocation requires enumerating a user's active JWTs — impossible in v1 because JWTs are cookie-only and never stored server-side. Supersedes the per-JTI approach in `specs/role-invalidation.md`. |
-| A-03 | Blocklist check placement | Middleware only, after JWT decryption via `getSessionFromJWT`. If `isBlocklisted(payload.sub)` returns true: delete the session cookie and redirect to `/auth/signin`. No additional check inside procedure bodies. |
+| A-03 | Blocklist check placement | Two enforcement points: (1) `src/middleware.ts` — after JWT decryption via `getSessionFromJWT`, calls `isBlocklisted(session.id)` (where `session.id = payload.sub`); if blocklisted, delete the session cookie and redirect to `/auth/signin`. (2) `blocklistMiddleware` in `src/server/trpc.ts` — runs on every `protectedProcedure` as a second enforcement point for tRPC calls that may arrive while middleware is on the public-path bypass (e.g., `/api/trpc`). |
 | A-04 | Suspension field | Add `suspendedAt DateTime?` to the `User` model. Null = active; non-null = suspended at that timestamp. All auth paths check this field before issuing a session. |
 | A-05 | Admin stats: live vs cached | Live DB queries in v1 — no Redis or in-memory caching. Revisit if `admin.getStats` regularly exceeds 500 ms. |
 | A-06 | Pending posts pagination | No pagination in v1. All PENDING posts are returned in one response. Add pagination in v2 if the queue regularly exceeds 200 items. |
 | A-07 | Admin-initiated user deletion | Delegates to the same anonymisation logic as `auth.deleteAccount` (privacy.md). The admin confirms by typing the target user's email address (not `"delete my account"`). Triggers blocklist invalidation before the transaction. |
 | A-08 | Board management procedures | Reuses existing `boards.*` tRPC procedures unchanged. New UI routes only: `/admin/boards`, `/admin/boards/new`, `/admin/boards/[slug]/settings`. |
 | A-09 | `adminProcedure` type | A custom tRPC procedure that extends `protectedProcedure` with an additional `role === 'ADMIN'` assertion. All `admin.*` procedures use it. |
-| A-10 | Admin cannot self-modify via admin panel | An admin cannot suspend, delete, or change the role of their own account via `admin.*` procedures — use the user-facing settings pages for that. |
+| A-10 | Admin cannot self-modify via admin panel | An admin cannot suspend, unsuspend, delete, or change the role of their own account via `admin.*` procedures — use the user-facing settings pages for that. All four mutation procedures reject self-targeting with `FORBIDDEN`. |
 | A-11 | Pending posts sort order | Oldest first (`createdAt ASC`) — first submitted, first reviewed. |
 
 | A-12 | Suspension blocks all auth methods | Suspension prevents sign-in via credentials, Google OAuth, GitHub OAuth, and magic link. The `signIn` NextAuth callback and the `CredentialsProvider.authorize` callback both check `suspendedAt`. No auth path is exempt. |
@@ -159,15 +159,22 @@ z.object({
 ```ts
 {
   users: Array<{
-    id:          string,
-    name:        string | null,
-    email:       string,
-    role:        string,
-    createdAt:   string,   // ISO-8601
-    suspendedAt: string | null,
+    id:            string,
+    name:          string | null,
+    email:         string,
+    image:         string | null,
+    role:          "ADMIN" | "MEMBER",
+    emailVerified: string | null,   // ISO-8601
+    createdAt:     string,          // ISO-8601
+    suspendedAt:   string | null,   // ISO-8601
+    _count: {
+      posts:    number,
+      comments: number,
+    },
   }>,
   total:      number,
   page:       number,
+  limit:      number,
   totalPages: number,
 }
 ```
@@ -250,11 +257,18 @@ z.object({ userId: z.string().cuid() }).strict()
 { id: string, suspendedAt: null }
 ```
 
+**Side effects:** Calls `removeFromBlocklist(userId)` after clearing `suspendedAt`,
+so the user's existing JWT is accepted immediately on next request without waiting
+for the blocklist TTL to expire. (Earlier spec wording said "expires naturally" —
+this was changed as an H-1 security improvement: instant unsuspend requires instant
+blocklist removal.)
+
 **Error states:**
 
 | Condition | Code | Message |
 |-----------|------|---------|
 | User not found | `NOT_FOUND` | "User not found." |
+| Caller is target | `FORBIDDEN` | "Cannot unsuspend yourself." |
 | Not suspended | — | No-op; return current state |
 
 **Logging:** `{ adminId, targetUserId }`
@@ -278,13 +292,17 @@ z.object({
 { id: string }
 ```
 
+**Pre-condition check:** If the target user owns any boards (`prisma.board.count({ where: { ownerId: userId } }) > 0`), reject with `BAD_REQUEST`: "User owns N board(s). Reassign or delete them first." This check happens before `addToBlocklist` — no side effects on rejection.
+
 **Side effects (in order):**
-1. `addToBlocklist(userId, TTL_30_DAYS)` — before the transaction so the user is blocked even if the transaction is slow.
-2. Inside a single `$transaction`:
-   - Tombstone all comments by this user: `comment.updateMany({ where: { authorId: userId }, data: { authorId: null, body: '[deleted]' } })`.
-   - Anonymise user email: `user.update({ data: { email: 'deleted-{cuid}@deleted.etash.com', name: null, image: null, passwordHash: null } })`.
-   - Delete `Session` rows, `Account` rows, `Vote` rows.
-   - Hard-delete the `User` row.
+1. `addToBlocklist(userId)` — before the transaction so the user is blocked even if the transaction is slow.
+2. `invalidateAllUserSessionCaches(userId)` — clears any Redis session-cache entries.
+3. `adminDeleteUser(userId)` — inside a single `$transaction`:
+   - TOCTOU guard: re-reads `role` and aborts if the user was promoted to ADMIN between the outer check and the delete.
+   - Tombstone all comments: `comment.updateMany({ where: { authorId: userId }, data: { authorId: null, body: '[deleted]' } })`.
+   - Null all post authorship: `post.updateMany({ where: { authorId: userId }, data: { authorId: null } })`.
+   - Delete `Vote` rows for the user.
+   - Hard-delete the `User` row (cascades `Session`, `Account`, `OrganizationMember` via DB FK cascade).
 
 **Error states:**
 
@@ -292,6 +310,7 @@ z.object({
 |-----------|------|---------|
 | User not found | `NOT_FOUND` | "User not found." |
 | `confirmEmail` mismatch | `BAD_REQUEST` | "Email does not match. Please type the user's email exactly." |
+| Target owns boards | `BAD_REQUEST` | "User owns N board(s). Reassign or delete them first." |
 | Target is an admin | `FORBIDDEN` | "Cannot delete an admin account via the admin panel." |
 | Caller is target | `FORBIDDEN` | "Use your account settings to delete your own account." |
 
@@ -350,45 +369,36 @@ z.object({
 6. Empty state: "No posts pending approval." when the queue is empty.
 7. After a successful approve or reject, the row is removed from the list (optimistic update or re-fetch).
 
-### API Contract
+### Data Access
 
-#### `admin.listPendingPosts`
+**No `admin.listPendingPosts` tRPC procedure exists.** The `/admin/posts` page is
+an RSC (React Server Component) inside the `(admin)` route group whose `layout.tsx`
+already enforces `role === 'ADMIN'` server-side. The page calls the repository
+function directly:
 
-**Procedure:** `admin.listPendingPosts`  
-**Type:** `query`  
-**Access:** `adminProcedure`
-
-**Input:** none
-
-**Output:**
 ```ts
-{
-  posts: Array<{
-    id:        string,
-    title:     string,
-    boardId:   string,
-    boardName: string,
-    boardSlug: string,
-    authorId:  string | null,
-    author:    { id: string, name: string | null } | null,
-    guestName: string | null,
-    createdAt: string,   // ISO-8601
-  }>,
-}
+// src/app/(admin)/admin/posts/page.tsx
+import { listPendingPosts } from "@/server/repositories/admin";
+
+const posts = await listPendingPosts();
 ```
 
-**Implementation notes:**
+`listPendingPosts()` in `src/server/repositories/admin.ts`:
 ```ts
 prisma.post.findMany({
   where:   { status: 'PENDING' },
   orderBy: { createdAt: 'asc' },
   select: {
-    id: true, title: true, authorId: true, guestName: true, createdAt: true,
-    board:  { select: { id: true, name: true, slug: true } },
+    id: true, postNumber: true, title: true, description: true,
+    guestName: true, createdAt: true,
+    board:  { select: { id: true, slug: true, name: true } },
     author: { select: { id: true, name: true } },
   },
 })
 ```
+
+The sidebar badge count uses the lightweight `getPendingPostCount()` (a single
+`prisma.post.count`) rather than fetching the full list.
 
 #### `posts.setStatus` (existing — used for approve / reject)
 
@@ -420,20 +430,21 @@ No changes to `posts.setStatus` are required.
 ### Implementation
 
 ```
-src/app/(protected)/admin/
+src/app/(admin)/          ← route group (does not appear in URLs)
   layout.tsx              ← sidebar + role guard
-  page.tsx                ← /admin (overview)
-  users/
-    page.tsx              ← /admin/users
-  boards/
-    page.tsx              ← /admin/boards
-    new/
-      page.tsx            ← /admin/boards/new
-    [slug]/
-      settings/
-        page.tsx          ← /admin/boards/[slug]/settings
-  posts/
-    page.tsx              ← /admin/posts
+  admin/
+    page.tsx              ← /admin (overview)
+    users/
+      page.tsx            ← /admin/users
+    boards/
+      page.tsx            ← /admin/boards
+      new/
+        page.tsx          ← /admin/boards/new
+      [slug]/
+        settings/
+          page.tsx        ← /admin/boards/[slug]/settings
+    posts/
+      page.tsx            ← /admin/posts
 ```
 
 ---
@@ -477,9 +488,10 @@ if (payload.sub && await isBlocklisted(payload.sub)) {
 
 ```ts
 import { redis } from '@/lib/redis';
+import { SESSION_MAX_AGE_SECONDS } from '@/lib/constants';
 
 const KEY_PREFIX = 'session:blocklist:user:';
-export const TTL_30_DAYS = 60 * 60 * 24 * 30; // seconds
+const TTL_30_DAYS = SESSION_MAX_AGE_SECONDS; // private — not exported
 
 export async function addToBlocklist(
   userId: string,
@@ -491,17 +503,27 @@ export async function addToBlocklist(
 export async function isBlocklisted(userId: string): Promise<boolean> {
   return (await redis.exists(`${KEY_PREFIX}${userId}`)) === 1;
 }
+
+export async function removeFromBlocklist(userId: string): Promise<void> {
+  await redis.del(`${KEY_PREFIX}${userId}`);
+}
 ```
+
+**Note:** `TTL_30_DAYS` is private (not exported). The TTL value is sourced from
+`SESSION_MAX_AGE_SECONDS` in `src/lib/constants.ts`. `removeFromBlocklist` is
+exported and called by `admin.unsuspendUser`.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/lib/session-blocklist.ts` | **New** — `addToBlocklist`, `isBlocklisted` |
-| `src/middleware.ts` | Add `isBlocklisted(payload.sub)` check after JWT decryption |
-| `src/server/routers/admin.ts` | **New** — all `admin.*` procedures; calls `addToBlocklist` in `updateUserRole`, `suspendUser`, `deleteUser` |
-| `src/server/repositories/admin.ts` | **New** — `getWorkspaceStats`, `listUsers`, `listPendingPosts`, user mutation helpers |
-| `prisma/schema.prisma` | Add `suspendedAt DateTime?` to `User` model |
+| `src/lib/session-blocklist.ts` | **New** — `addToBlocklist`, `isBlocklisted`, `removeFromBlocklist`; TTL sourced from `src/lib/constants.ts` |
+| `src/lib/constants.ts` | **New** — `SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30` |
+| `src/middleware.ts` | Add `isBlocklisted(session.id)` check after JWT decryption |
+| `src/server/trpc.ts` | Add `blocklistMiddleware` on every `protectedProcedure` (second enforcement point) |
+| `src/server/routers/admin.ts` | **New** — all `admin.*` procedures; calls `addToBlocklist` in `updateUserRole`, `suspendUser`, `deleteUser`; calls `removeFromBlocklist` in `unsuspendUser` |
+| `src/server/repositories/admin.ts` | **New** — `getWorkspaceStats`, `listAdminUsers`, `listPendingPosts`, `getPendingPostCount` |
+| `prisma/schema.prisma` | Add `suspendedAt DateTime?` to `User` model; change `role String` to `role Role` (enum) |
 | `src/auth.ts` | Add `suspendedAt` check in `signIn` callback |
 
 ### Difference from `specs/role-invalidation.md`
@@ -524,7 +546,7 @@ model User {
   name             String?                  // PII
   image            String?                  // PII
   passwordHash     String?
-  role             String    @default("MEMBER")
+  role             Role      @default(MEMBER) // enum: MEMBER | ADMIN
   failedLoginCount Int       @default(0)
   lockedUntil      DateTime?
   suspendedAt      DateTime?               // PII: set by admin on suspension; null = active

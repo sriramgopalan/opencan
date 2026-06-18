@@ -288,7 +288,8 @@ z.object({
 
 **Notes**
 - Guests cannot edit or delete their own comments (no persistent identity). Admins can always edit/delete.
-- `body` and `guestName` are sanitised with `stripHtml` before persistence.
+- `body` and `guestName` are sanitised with `stripHtml` at Zod transform time (before the procedure body runs).
+- Admin callers receive the full `CreatedComment` (includes `authorId`). Non-admin callers receive a stripped response: `{ id, postId, guestName, body, createdAt, updatedAt }` — `authorId` is excluded.
 
 ---
 
@@ -423,7 +424,7 @@ All tests use `prismaMock` (mocked Prisma client). No real database.
 
 ### Router integration tests — `src/server/routers/comment.test.ts`
 
-All tests use a real Postgres test database. Each test resets state in `beforeEach`.
+**Implementation note:** These tests use vitest-mock-extended (`mockDeep<PrismaClient>()`) with a mocked Prisma client, not a real Postgres database — consistent with all other router tests in this codebase. The "real Postgres" intent described originally was not carried forward.
 
 | Procedure | Caller | Cases |
 |---|---|---|

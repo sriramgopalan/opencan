@@ -270,7 +270,10 @@ describe("authRouter", () => {
       { count: 0 },
       { count: 0 },
       { count: 0 },
+      { count: 0 },
+      { count: 0 },
     ] as never);
+    prismaMock.vote.deleteMany.mockResolvedValue({ count: 0 } as never);
     prismaMock.user.update.mockResolvedValue({} as never);
   }
 
@@ -284,6 +287,15 @@ describe("authRouter", () => {
       expect(result).toEqual({ success: true });
       expect(prismaMock.$transaction).toHaveBeenCalled();
       expect(prismaMock.user.update).toHaveBeenCalled();
+    });
+
+    it("deletes user votes in the same transaction as session cleanup", async () => {
+      setupDeleteAccountMocks();
+
+      const caller = createCaller({ session: makeSession(), ip: "127.0.0.1" });
+      await caller.deleteAccount({ confirmation: "delete my account" });
+
+      expect(prismaMock.vote.deleteMany).toHaveBeenCalledWith({ where: { userId: "user-1" } });
     });
 
     it("rejects wrong confirmation string", async () => {

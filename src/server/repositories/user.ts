@@ -173,6 +173,7 @@ export async function deleteUserAccount(userId: string, email: string): Promise<
       where: { authorId: userId },
       data: { authorId: null, body: "[deleted]" },
     }),
+    prisma.vote.deleteMany({ where: { userId } }),
     prisma.session.deleteMany({ where: { userId } }),
     prisma.account.deleteMany({ where: { userId } }),
     prisma.verificationToken.deleteMany({ where: { identifier: email } }),

@@ -125,6 +125,13 @@ the session payload at the edge. The Redis-backed `cacheSession` /
 `src/server/repositories/session.ts` exist but are not called anywhere in
 the live request path as of this writing.
 
+**Note:** `src/middleware.ts` also calls `isBlocklisted(userId)` via
+`src/lib/session-blocklist.ts` after JWT decryption — this is an O(1) Redis
+`EXISTS` call added by the admin feature to immediately invalidate sessions on
+role change, suspension, or account deletion. See admin.md §6 for the full
+blocklist design. Additionally, every `protectedProcedure` in the tRPC layer
+runs `blocklistMiddleware` as a second enforcement point.
+
 ---
 
 ## Prisma Models
@@ -146,15 +153,20 @@ model User {
   name             String?                  // PII: display name, synced from OAuth on first login only
   image            String?                  // PII: avatar URL, synced from OAuth on first login only
   passwordHash     String?                  // null for OAuth-only accounts
-  role             String    @default("MEMBER")  // "MEMBER" or "ADMIN"
+  role             Role      @default(MEMBER)  // enum: MEMBER | ADMIN (see admin.md)
   failedLoginCount Int       @default(0)
   lockedUntil      DateTime?
+  suspendedAt      DateTime? // PII: set by admin on suspension; null = active (see admin.md)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  accounts         Account[]
-  sessions         Session[]
-  organization     OrganizationMember[]
+  accounts    Account[]
+  sessions    Session[]
+  memberships OrganizationMember[]
+  boards      Board[]
+  posts       Post[]
+  votes       Vote[]
+  comments    Comment[]
 
   @@index([email])
   @@index([lockedUntil])
@@ -411,12 +423,17 @@ under decisions 12 & 19, above).
 client-side. There is no server-side record to delete.
 
 **Account deletion:**
-- `prisma.session.deleteMany` and `invalidateAllUserSessionCaches` are
-  called in the same transaction as account anonymisation, but have no
-  effect on the user's already-issued JWT (see decisions 12 & 19 note). The
-  JWT remains valid until it expires on its own.
-- Real, immediate revocation is deferred to a JTI-blocklist implementation
-  — see `specs/role-invalidation.md` (intentionally out of scope here).
+- Inside a single `$transaction`: tombstones all comments (`authorId → null`,
+  `body → "[deleted]"`), deletes all `Vote` rows, `Session` rows, `Account`
+  rows, `VerificationToken` rows, and `OrganizationMember` rows for the user.
+  Then anonymises the `User` row (email obfuscated, PII nulled — row is NOT
+  hard-deleted, preserving foreign-key integrity for boards and posts).
+- `invalidateAllUserSessionCaches` is also called, but since no JWT lookup
+  ever consults Redis, the call has no effect on the user's already-issued JWT
+  (see decisions 12 & 19 note). The JWT remains valid until it expires.
+- Real, immediate revocation is handled by the admin blocklist — see
+  `specs/role-invalidation.md` and admin.md §6 (intentionally out of scope
+  for user-initiated deletion).
 
 ---
 
@@ -601,7 +618,9 @@ input:  { confirmation: "delete my account" }
 output: { success: true }
 access: protectedProcedure
 ```
-Anonymises PII, hard-deletes sessions, invalidates Redis keys.
+Anonymises PII. In a single transaction: tombstones comment bodies, deletes
+Vote rows, Session rows, Account rows, VerificationToken rows, and
+OrganizationMember rows. Then anonymises the User row (does not hard-delete it).
 The `confirmation` field must equal the exact string `"delete my account"` —
 prevents accidental deletion via client bugs.
 

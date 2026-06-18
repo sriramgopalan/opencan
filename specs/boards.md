@@ -512,6 +512,7 @@ z.object({
   limit:   z.number().int().min(1).max(100).default(20),
   orderBy: z.enum(['name', 'createdAt', 'postCount']).default('createdAt'),
   order:   z.enum(['asc', 'desc']).default('desc'),
+  search:  z.string().max(200).optional(),  // case-insensitive substring match on name
 })
 ```
 
