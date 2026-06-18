@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { CreateBoardForm } from "@/components/boards/CreateBoardForm";
 
-export const metadata: Metadata = { title: "New board — Dashboard" };
+export const metadata: Metadata = { title: "New board — Admin" };
 
 export default async function NewBoardPage() {
   const session = await auth();

@@ -5,12 +5,14 @@ import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
+import { SESSION_MAX_AGE_SECONDS } from "@/lib/constants";
 import { sendWelcomeEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/server/db";
 import {
   getProviderForEmail,
+  getSuspendedAt,
   getUserWithPasswordHash,
   incrementFailedLoginCount,
   lockAccount,
@@ -25,7 +27,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: SESSION_MAX_AGE_SECONDS,
     updateAge: 60 * 15,
   },
   cookies: {
@@ -34,7 +36,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         httpOnly: true,
         sameSite: "lax" as const,
         secure: env.NODE_ENV === "production",
-        maxAge: 60 * 60 * 24 * 30,
+        maxAge: SESSION_MAX_AGE_SECONDS,
       },
     },
   },
@@ -53,7 +55,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await getUserWithPasswordHash(email);
         if (!user?.passwordHash) return null;
 
-        // Check lockout
+        // Check lockout before verify to skip expensive hash work
         if (user.lockedUntil && user.lockedUntil > new Date()) {
           return null;
         }
@@ -68,6 +70,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
           return null;
         }
+
+        // Check suspension after verify to normalise timing across failure paths
+        if (user.suspendedAt) return null;
 
         await resetFailedLoginCount(user.id);
         return { id: user.id, email, role: user.role };
@@ -105,6 +110,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const email = user.email;
       if (!email) {
         return "/auth/error?error=NoEmail";
+      }
+
+      // Check suspension before allowing sign-in
+      const suspendedAt = await getSuspendedAt(email);
+      if (suspendedAt) {
+        return "/auth/error?error=AccessDenied";
       }
 
       // Check for account conflict: email exists under a different provider

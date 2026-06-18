@@ -1,5 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
+import type { Role } from "@prisma/client";
 
+import { AppError } from "@/lib/errors";
 import { prisma } from "@/server/db";
 import type { CreateUserInput, SafeUser } from "@/types/auth";
 
@@ -25,7 +27,7 @@ export async function getUserByEmail(email: string): Promise<SafeUser | null> {
 
 export async function getUserWithPasswordHash(
   email: string,
-): Promise<{ id: string; passwordHash: string | null; failedLoginCount: number; lockedUntil: Date | null; role: string } | null> {
+): Promise<{ id: string; passwordHash: string | null; failedLoginCount: number; lockedUntil: Date | null; suspendedAt: Date | null; role: string } | null> {
   return prisma.user.findUnique({
     where: { email },
     select: {
@@ -33,6 +35,7 @@ export async function getUserWithPasswordHash(
       passwordHash: true,
       failedLoginCount: true,
       lockedUntil: true,
+      suspendedAt: true,
       role: true,
     },
   });
@@ -113,4 +116,93 @@ export async function getProviderForEmail(
     select: { provider: true },
   });
   return account?.provider ?? null;
+}
+
+export async function getSuspendedAt(email: string): Promise<Date | null> {
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { suspendedAt: true },
+  });
+  return user?.suspendedAt ?? null;
+}
+
+export async function getUserRoleAndStatus(
+  userId: string,
+): Promise<{ id: string; email: string; role: string; suspendedAt: Date | null } | null> {
+  return prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, role: true, suspendedAt: true },
+  });
+}
+
+export async function setUserRole(
+  userId: string,
+  role: Role,
+): Promise<{ id: string; role: Role }> {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { role },
+    select: { id: true, role: true },
+  });
+}
+
+export async function suspendUser(
+  userId: string,
+): Promise<{ id: string; suspendedAt: Date }> {
+  const now = new Date();
+  return prisma.user.update({
+    where: { id: userId },
+    data: { suspendedAt: now },
+    select: { id: true, suspendedAt: true },
+  }) as Promise<{ id: string; suspendedAt: Date }>;
+}
+
+export async function unsuspendUser(
+  userId: string,
+): Promise<{ id: string; suspendedAt: null }> {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { suspendedAt: null },
+    select: { id: true, suspendedAt: true },
+  }) as Promise<{ id: string; suspendedAt: null }>;
+}
+
+export async function deleteUserAccount(userId: string, email: string): Promise<void> {
+  await prisma.$transaction([
+    prisma.comment.updateMany({
+      where: { authorId: userId },
+      data: { authorId: null, body: "[deleted]" },
+    }),
+    prisma.session.deleteMany({ where: { userId } }),
+    prisma.account.deleteMany({ where: { userId } }),
+    prisma.verificationToken.deleteMany({ where: { identifier: email } }),
+    prisma.organizationMember.deleteMany({ where: { userId } }),
+  ]);
+  await anonymiseUser(userId);
+}
+
+// Hard-deletes a user: tombstones comment bodies, nulls post authorship, removes votes,
+// then hard-deletes the user row (cascades sessions, accounts, org memberships).
+// NOTE: fails at the DB level if the user owns boards (Board.onDelete = Restrict).
+// The caller must blocklist the user before invoking this function.
+export async function adminDeleteUser(userId: string): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const current = await tx.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (current?.role === "ADMIN") {
+      throw new AppError("FORBIDDEN", "Cannot delete an admin user.");
+    }
+    await tx.comment.updateMany({
+      where: { authorId: userId },
+      data: { authorId: null, body: "[deleted]" },
+    });
+    await tx.post.updateMany({
+      where: { authorId: userId },
+      data: { authorId: null },
+    });
+    await tx.vote.deleteMany({ where: { userId } });
+    await tx.user.delete({ where: { id: userId } });
+  });
 }

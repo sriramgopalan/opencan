@@ -17,7 +17,7 @@ export function CreateBoardForm() {
 
   const createMutation = api.boards.create.useMutation({
     onSuccess(data) {
-      router.push(`/dashboard/boards/${data.slug}/settings`);
+      router.push(`/admin/boards/${data.slug}/settings`);
     },
     onError(err) {
       setError(err.message);

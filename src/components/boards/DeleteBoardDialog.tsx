@@ -19,7 +19,7 @@ export function DeleteBoardDialog({ boardId, boardSlug }: Props) {
 
   const deleteMutation = api.boards.delete.useMutation({
     onSuccess() {
-      router.push("/dashboard/boards");
+      router.push("/admin/boards");
     },
     onError(err) {
       setError(err.message);

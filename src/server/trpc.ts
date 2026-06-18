@@ -5,6 +5,7 @@ import superjson from "superjson";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { rateLimit } from "@/lib/rate-limit";
+import { isBlocklisted } from "@/lib/session-blocklist";
 
 
 export type Context = {
@@ -45,6 +46,17 @@ const authMiddleware = t.middleware(({ ctx, next }) => {
   });
 });
 
+const blocklistMiddleware = t.middleware(async ({ ctx, next }) => {
+  const session = ctx.session as AuthedSession;
+  if (await isBlocklisted(session.user.id)) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      cause: new AppError("UNAUTHORIZED", "Session has been revoked"),
+    });
+  }
+  return next({ ctx: { ...ctx, session } });
+});
+
 const adminMiddleware = t.middleware(({ ctx, next }) => {
   const session = ctx.session as AuthedSession;
   if (session.user.role !== "ADMIN") {
@@ -59,7 +71,7 @@ const adminMiddleware = t.middleware(({ ctx, next }) => {
 export const createTRPCRouter = t.router;
 export const createCallerFactory = t.createCallerFactory;
 export const publicProcedure = t.procedure;
-export const protectedProcedure = t.procedure.use(authMiddleware);
+export const protectedProcedure = t.procedure.use(authMiddleware).use(blocklistMiddleware);
 export const adminProcedure = protectedProcedure.use(adminMiddleware);
 
 export async function applyRateLimit(key: string, max: number, windowSeconds: number): Promise<void> {

@@ -32,7 +32,7 @@ export default async function Home() {
           </Link>
         )}
         {isAdmin && (
-          <Link href="/dashboard/boards" className={secondaryCta}>
+          <Link href="/admin/boards" className={secondaryCta}>
             Dashboard
           </Link>
         )}

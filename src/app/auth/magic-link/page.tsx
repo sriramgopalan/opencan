@@ -8,7 +8,7 @@ function MagicLinkContent() {
   const token = searchParams.get("token") ?? "";
   const email = searchParams.get("email") ?? "";
 
-  const callbackUrl = `/api/auth/callback/email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
+  const callbackUrl = `/api/auth/magic-link?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
 
   return (
     <main className="mx-auto flex max-w-sm flex-col px-4 py-16">

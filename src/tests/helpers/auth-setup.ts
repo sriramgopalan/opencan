@@ -2,6 +2,7 @@ import { vi } from "vitest";
 
 export function makeRedisMock() {
   return {
+    exists: vi.fn<() => Promise<number>>().mockResolvedValue(0),
     get: vi.fn<() => Promise<string | null>>(),
     set: vi.fn<() => Promise<string>>(),
     del: vi.fn<() => Promise<number>>(),

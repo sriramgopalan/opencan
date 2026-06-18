@@ -20,6 +20,13 @@ const {
   resetFailedLoginCount,
   anonymiseUser,
   getProviderForEmail,
+  getSuspendedAt,
+  getUserRoleAndStatus,
+  adminDeleteUser,
+  setUserRole,
+  suspendUser,
+  unsuspendUser,
+  deleteUserAccount,
 } = await import("@/server/repositories/user");
 
 const SAFE_USER = {
@@ -67,17 +74,20 @@ describe("user repository", () => {
   });
 
   describe("getUserWithPasswordHash", () => {
-    it("returns password hash fields", async () => {
+    it("returns password hash fields including suspendedAt", async () => {
       const row = {
         id: "user-1",
         passwordHash: "hashed",
         failedLoginCount: 0,
         lockedUntil: null,
+        suspendedAt: null,
+        role: "MEMBER",
       };
       prismaMock.user.findUnique.mockResolvedValue(row as never);
       const result = await getUserWithPasswordHash("test@example.com");
       expect(result?.passwordHash).toBe("hashed");
       expect(result?.failedLoginCount).toBe(0);
+      expect(result?.suspendedAt).toBeNull();
     });
   });
 
@@ -155,6 +165,114 @@ describe("user repository", () => {
     it("returns null when no account", async () => {
       prismaMock.account.findFirst.mockResolvedValue(null);
       expect(await getProviderForEmail("test@example.com")).toBeNull();
+    });
+  });
+
+  describe("getSuspendedAt", () => {
+    it("returns suspendedAt when user is suspended", async () => {
+      const suspendedAt = new Date("2026-01-01");
+      prismaMock.user.findUnique.mockResolvedValue({ suspendedAt } as never);
+      expect(await getSuspendedAt("test@example.com")).toEqual(suspendedAt);
+    });
+
+    it("returns null when user is not suspended", async () => {
+      prismaMock.user.findUnique.mockResolvedValue({ suspendedAt: null } as never);
+      expect(await getSuspendedAt("test@example.com")).toBeNull();
+    });
+
+    it("returns null when user is not found", async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+      expect(await getSuspendedAt("nobody@example.com")).toBeNull();
+    });
+  });
+
+  describe("getUserRoleAndStatus", () => {
+    it("returns role and status fields", async () => {
+      const row = { id: "user-1", email: "test@example.com", role: "MEMBER", suspendedAt: null };
+      prismaMock.user.findUnique.mockResolvedValue(row as never);
+      expect(await getUserRoleAndStatus("user-1")).toEqual(row);
+    });
+
+    it("returns null when not found", async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+      expect(await getUserRoleAndStatus("missing")).toBeNull();
+    });
+  });
+
+  describe("setUserRole", () => {
+    it("updates role and returns id and role", async () => {
+      prismaMock.user.update.mockResolvedValue({ id: "user-1", role: "ADMIN" } as never);
+      const result = await setUserRole("user-1", "ADMIN");
+      expect(result.role).toBe("ADMIN");
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { role: "ADMIN" } }),
+      );
+    });
+  });
+
+  describe("suspendUser", () => {
+    it("sets suspendedAt to current time", async () => {
+      const now = new Date();
+      prismaMock.user.update.mockResolvedValue({ id: "user-1", suspendedAt: now } as never);
+      const result = await suspendUser("user-1");
+      expect(result.suspendedAt).toBeInstanceOf(Date);
+    });
+  });
+
+  describe("unsuspendUser", () => {
+    it("clears suspendedAt", async () => {
+      prismaMock.user.update.mockResolvedValue({ id: "user-1", suspendedAt: null } as never);
+      const result = await unsuspendUser("user-1");
+      expect(result.suspendedAt).toBeNull();
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { suspendedAt: null } }),
+      );
+    });
+  });
+
+  describe("deleteUserAccount", () => {
+    it("runs transaction then anonymises user", async () => {
+      prismaMock.$transaction.mockResolvedValue([]);
+      prismaMock.user.update.mockResolvedValue({} as never);
+      await deleteUserAccount("user-1", "test@example.com");
+      expect(prismaMock.$transaction).toHaveBeenCalledOnce();
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "user-1" },
+          data: expect.objectContaining({ email: expect.stringMatching(/^deleted-/) }),
+        }),
+      );
+    });
+  });
+
+  describe("adminDeleteUser", () => {
+    it("tombstones comments, nulls post authors, deletes votes, then hard-deletes user", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      prismaMock.$transaction.mockImplementation(async (fn: any) => {
+        if (typeof fn === "function") await fn(prismaMock);
+        return [];
+      });
+      prismaMock.comment.updateMany.mockResolvedValue({ count: 0 } as never);
+      prismaMock.post.updateMany.mockResolvedValue({ count: 0 } as never);
+      prismaMock.vote.deleteMany.mockResolvedValue({ count: 0 } as never);
+      prismaMock.user.delete.mockResolvedValue({} as never);
+
+      await adminDeleteUser("user-1");
+
+      expect(prismaMock.comment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { authorId: "user-1" },
+          data: { authorId: null, body: "[deleted]" },
+        }),
+      );
+      expect(prismaMock.post.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { authorId: "user-1" },
+          data: { authorId: null },
+        }),
+      );
+      expect(prismaMock.vote.deleteMany).toHaveBeenCalledWith({ where: { userId: "user-1" } });
+      expect(prismaMock.user.delete).toHaveBeenCalledWith({ where: { id: "user-1" } });
     });
   });
 });

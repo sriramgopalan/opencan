@@ -13,6 +13,11 @@ enum Plan {
   ENTERPRISE
 }
 
+enum Role {
+  MEMBER
+  ADMIN
+}
+
 enum PostStatus {
   PENDING
   OPEN
@@ -32,7 +37,8 @@ model User {
   passwordHash     String? // null for OAuth-only accounts
   failedLoginCount Int       @default(0)
   lockedUntil      DateTime?
-  role             String    @default("MEMBER") // "ADMIN" | "MEMBER"
+  suspendedAt      DateTime? // PII: set by admin on suspension; null = active account
+  role             Role      @default(MEMBER)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

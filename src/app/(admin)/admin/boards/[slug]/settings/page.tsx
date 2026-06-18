@@ -15,8 +15,8 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const board = await getBoardBySlugAdmin(slug);
-  if (!board) return { title: "Board not found — Dashboard" };
-  return { title: `${board.name} settings — Dashboard` };
+  if (!board) return { title: "Board not found — Admin" };
+  return { title: `${board.name} settings — Admin` };
 }
 
 export default async function BoardSettingsPage({ params }: Props) {
@@ -30,11 +30,11 @@ export default async function BoardSettingsPage({ params }: Props) {
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
       <nav aria-label="Breadcrumb" className="mb-1 text-sm text-gray-500">
-        <Link href="/dashboard/boards" className="hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          Dashboard
+        <Link href="/admin" className="hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          Admin
         </Link>
         <span className="px-1.5 text-gray-300" aria-hidden="true">/</span>
-        <Link href="/dashboard/boards" className="hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <Link href="/admin/boards" className="hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
           Boards
         </Link>
         <span className="px-1.5 text-gray-300" aria-hidden="true">/</span>
@@ -48,7 +48,7 @@ export default async function BoardSettingsPage({ params }: Props) {
           {board.name} — Settings
         </h1>
         <Link
-          href="/dashboard/boards"
+          href="/admin/boards"
           className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />

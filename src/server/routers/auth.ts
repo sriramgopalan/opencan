@@ -14,8 +14,8 @@ import { logger } from "@/lib/logger";
 import { prisma } from "@/server/db";
 import { invalidateAllUserSessionCaches } from "@/server/repositories/session";
 import {
-  anonymiseUser,
   createUser,
+  deleteUserAccount,
   getProviderForEmail,
   getUserByEmail,
   getUserWithPasswordHash,
@@ -150,22 +150,8 @@ export const authRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
       const email = ctx.session.user.email ?? "";
 
-      // Invalidate Redis cache before DB transaction
       await invalidateAllUserSessionCaches(userId);
-
-      await prisma.$transaction([
-        prisma.comment.updateMany({
-          where: { authorId: userId },
-          data: { authorId: null, body: "[deleted]" },
-        }),
-        prisma.session.deleteMany({ where: { userId } }),
-        prisma.account.deleteMany({ where: { userId } }),
-        prisma.verificationToken.deleteMany({ where: { identifier: email } }),
-        prisma.organizationMember.deleteMany({ where: { userId } }),
-      ]);
-
-      // Anonymise user record
-      await anonymiseUser(userId);
+      await deleteUserAccount(userId, email);
 
       logger.info({ userId }, "account deleted");
 
