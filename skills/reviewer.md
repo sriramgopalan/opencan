@@ -1,4 +1,4 @@
-# Reviewer skill — Etash project
+# Reviewer skill — OpenCan project
 
 This file is not a generation skill. It contains **Stage 3 review prompt
 templates** for use in a Claude Chat session after implementation is complete.

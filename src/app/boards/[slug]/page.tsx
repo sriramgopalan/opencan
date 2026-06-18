@@ -17,8 +17,8 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const board = await getBoardBySlug(slug);
-  if (!board) return { title: "Board not found — Etash" };
-  return { title: `${board.name} — Etash` };
+  if (!board) return { title: "Board not found — OpenCan" };
+  return { title: `${board.name} — OpenCan` };
 }
 
 export default async function PublicBoardPage({ params, searchParams }: Props) {

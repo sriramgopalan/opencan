@@ -1,4 +1,4 @@
-# Testing skill — Etash project
+# Testing skill — OpenCan project
 
 Test stack: **Vitest** (unit + integration) · **Playwright** (E2E) · **MSW** (external HTTP mocking)
 

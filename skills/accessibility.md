@@ -1,4 +1,4 @@
-# Accessibility skill — Etash project
+# Accessibility skill — OpenCan project
 
 Target standard: **WCAG 2.2 AA**. Baseline component library: **shadcn/ui**
 (Radix UI primitives — keyboard nav and ARIA roles are built in; do not

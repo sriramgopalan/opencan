@@ -31,8 +31,8 @@ async function sendEmail(opts: SendEmailOptions): Promise<void> {
 export async function sendWelcomeEmail(to: string): Promise<void> {
   await sendEmail({
     to,
-    subject: "Welcome to Etash",
-    html: `<p>Welcome to Etash! Your account is ready.</p>`,
+    subject: "Welcome to OpenCan",
+    html: `<p>Welcome to OpenCan! Your account is ready.</p>`,
   });
 }
 
@@ -42,9 +42,9 @@ export async function sendVerificationEmail(
 ): Promise<void> {
   await sendEmail({
     to,
-    subject: "Verify your Etash email address",
+    subject: "Verify your OpenCan email address",
     html: `
-      <p>Please verify your email address to complete your Etash setup.</p>
+      <p>Please verify your email address to complete your OpenCan setup.</p>
       <p><a href="${verifyUrl}">Verify email address</a></p>
       <p>This link expires in 24 hours.</p>
     `,
@@ -57,10 +57,10 @@ export async function sendMagicLinkEmail(
 ): Promise<void> {
   await sendEmail({
     to,
-    subject: "Your Etash sign-in link",
+    subject: "Your OpenCan sign-in link",
     html: `
-      <p>Click the link below to sign in to Etash.</p>
-      <p><a href="${magicLinkUrl}">Sign in to Etash</a></p>
+      <p>Click the link below to sign in to OpenCan.</p>
+      <p><a href="${magicLinkUrl}">Sign in to OpenCan</a></p>
       <p>This link expires in 1 hour and can only be used once.</p>
       <p>This link will open in the browser where you click it.</p>
     `,
@@ -70,9 +70,9 @@ export async function sendMagicLinkEmail(
 export async function sendPasswordChangedEmail(to: string): Promise<void> {
   await sendEmail({
     to,
-    subject: "Your Etash password was changed",
+    subject: "Your OpenCan password was changed",
     html: `
-      <p>Your Etash password was changed. If you did not make this change,
+      <p>Your OpenCan password was changed. If you did not make this change,
       please contact support immediately.</p>
     `,
   });
@@ -81,9 +81,9 @@ export async function sendPasswordChangedEmail(to: string): Promise<void> {
 export async function sendAccountDeletedEmail(to: string): Promise<void> {
   await sendEmail({
     to,
-    subject: "Your Etash account has been deleted",
+    subject: "Your OpenCan account has been deleted",
     html: `
-      <p>Your Etash account and all associated data have been permanently deleted.</p>
+      <p>Your OpenCan account and all associated data have been permanently deleted.</p>
     `,
   });
 }

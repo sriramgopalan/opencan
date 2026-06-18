@@ -5,7 +5,7 @@ import { BoardSearch } from "@/components/boards/BoardSearch";
 import { PaginationNav } from "@/components/boards/PaginationNav";
 import { listBoards } from "@/server/repositories/board";
 
-export const metadata: Metadata = { title: "Boards — Etash" };
+export const metadata: Metadata = { title: "Boards — OpenCan" };
 
 interface Props {
   searchParams: Promise<{ page?: string; search?: string }>;

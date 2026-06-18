@@ -17,10 +17,10 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, postNumber } = await params;
   const num = parseInt(postNumber, 10);
-  if (isNaN(num)) return { title: "Post not found — Etash" };
+  if (isNaN(num)) return { title: "Post not found — OpenCan" };
   const post = await getPostByNumber(slug, num, { isAdmin: false });
-  if (!post) return { title: "Post not found — Etash" };
-  return { title: `${post.title} — Etash` };
+  if (!post) return { title: "Post not found — OpenCan" };
+  return { title: `${post.title} — OpenCan` };
 }
 
 export default async function PostDetailPage({ params }: Props) {

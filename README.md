@@ -1,18 +1,18 @@
-# Etash
+# OpenCan
 
 **Open-source customer feedback management. Collect feedback, prioritize features, close the loop.**
 
-*Etash (Sanskrit: luminous, brilliant) — surface your brightest ideas.*
+
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![CI](https://github.com/sriramgopalan/etash/actions/workflows/ci.yml/badge.svg)](https://github.com/sriramgopalan/etash/actions/workflows/ci.yml)
+[![CI](https://github.com/sriramgopalan/opencan/actions/workflows/ci.yml/badge.svg)](https://github.com/sriramgopalan/opencan/actions/workflows/ci.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
 ---
 
-## What is Etash?
+## What is OpenCan?
 
-Etash is a self-hosted feedback management platform — think Canny, but open-source and under your control. Teams use it to collect feature requests and bug reports from customers, vote on what matters most, and communicate status back to the people who asked. Because it's self-hosted, your customer data stays on your infrastructure, and you can extend or modify the product without waiting for a vendor.
+OpenCan is a self-hosted feedback management platform — think Canny, but open-source and under your control. Teams use it to collect feature requests and bug reports from customers, vote on what matters most, and communicate status back to the people who asked. Because it's self-hosted, your customer data stays on your infrastructure, and you can extend or modify the product without waiting for a vendor.
 
 ## Features
 
@@ -56,8 +56,8 @@ Etash is a self-hosted feedback management platform — think Canny, but open-so
 **1. Clone the repository**
 
 ```bash
-git clone https://github.com/sriramgopalan/etash.git
-cd etash
+git clone https://github.com/sriramgopalan/opencan.git
+cd opencan
 ```
 
 **2. Configure environment variables**
@@ -97,7 +97,7 @@ All variables come from `.env.example`. Copy it to `.env` and populate each one.
 
 | Variable | Required | Description |
 |---|---|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string, e.g. `postgresql://user:pass@host:5432/etash` |
+| `DATABASE_URL` | Yes | PostgreSQL connection string, e.g. `postgresql://user:pass@host:5432/opencan` |
 
 #### Redis
 
@@ -127,7 +127,7 @@ All variables come from `.env.example`. Copy it to `.env` and populate each one.
 | Variable | Required | Description |
 |---|---|---|
 | `RESEND_API_KEY` | Yes | API key from your [Resend](https://resend.com) account |
-| `RESEND_FROM` | Yes | Sender address, e.g. `Etash <noreply@example.com>` |
+| `RESEND_FROM` | Yes | Sender address, e.g. `OpenCan <noreply@opencan.dev>` |
 
 #### Object Storage (MinIO / S3-compatible)
 
@@ -157,7 +157,7 @@ Open the `User` table, find your record, and set `role` to `ADMIN`.
 **Via SQL:**
 
 ```bash
-docker compose exec postgres psql -U postgres -d etash -c \
+docker compose exec postgres psql -U postgres -d opencan -c \
   "UPDATE \"User\" SET role = 'ADMIN' WHERE email = 'your@email.com';"
 ```
 
@@ -168,8 +168,8 @@ docker compose exec postgres psql -U postgres -d etash -c \
 **1. Clone and install dependencies**
 
 ```bash
-git clone https://github.com/sriramgopalan/etash.git
-cd etash
+git clone https://github.com/sriramgopalan/opencan.git
+cd opencan
 npm install
 ```
 
@@ -236,9 +236,9 @@ Contributions are welcome. A few guidelines:
 
 ## License
 
-[AGPL-3.0](LICENSE) — you are free to self-host, use, and modify Etash. If you distribute a modified version or offer it as a service, your changes must also be open-sourced under AGPL-3.0.
+[AGPL-3.0](LICENSE) — you are free to self-host, use, and modify OpenCan. If you distribute a modified version or offer it as a service, your changes must also be open-sourced under AGPL-3.0.
 
-A commercial managed hosting licence (for teams that want hosted Etash without the AGPL obligations) is coming soon.
+A commercial managed hosting licence (for teams that want hosted OpenCan without the AGPL obligations) is coming soon.
 
 ---
 

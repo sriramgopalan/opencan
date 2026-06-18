@@ -50,7 +50,7 @@ jobs:
     name: "Vitest"
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/etash_test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/opencan_test
       AUTH_SECRET: "ci-placeholder-not-a-real-secret"
       GOOGLE_CLIENT_ID: "test-google-client-id"
       GOOGLE_CLIENT_SECRET: "test-google-client-secret"
@@ -67,7 +67,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: etash_test
+          POSTGRES_DB: opencan_test
         ports:
           - 5432:5432
         options: >-
@@ -106,7 +106,7 @@ jobs:
     name: "Playwright E2E"
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/etash_test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/opencan_test
       AUTH_SECRET: "ci-placeholder-not-a-real-secret"
       GOOGLE_CLIENT_ID: "test-google-client-id"
       GOOGLE_CLIENT_SECRET: "test-google-client-secret"
@@ -123,7 +123,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: etash_test
+          POSTGRES_DB: opencan_test
         ports:
           - 5432:5432
         options: >-
@@ -213,7 +213,7 @@ jobs:
     name: "Lighthouse CI"
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/etash_test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/opencan_test
       AUTH_SECRET: "ci-placeholder-not-a-real-secret"
       GOOGLE_CLIENT_ID: "test-google-client-id"
       GOOGLE_CLIENT_SECRET: "test-google-client-secret"
@@ -230,7 +230,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: etash_test
+          POSTGRES_DB: opencan_test
         ports:
           - 5432:5432
         options: >-

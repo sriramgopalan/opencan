@@ -1,4 +1,4 @@
-# Base skill — Etash project
+# Base skill — OpenCan project
 
 ## Project
 Next.js 16 App Router · TypeScript strict · Prisma + PostgreSQL · tRPC · Pino logging.

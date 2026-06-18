@@ -36,7 +36,7 @@ function SignInForm() {
     <main className="mx-auto flex max-w-sm flex-col px-4 py-16">
       <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-md">
         <h1 className="mb-6 text-center text-xl font-semibold tracking-tight text-gray-900">
-          Sign in to Etash
+          Sign in to OpenCan
         </h1>
         <form onSubmit={handleCredentials} className="space-y-4">
           <EmailPasswordFields

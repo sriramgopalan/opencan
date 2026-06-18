@@ -148,7 +148,7 @@ describe("user repository", () => {
       prismaMock.user.update.mockResolvedValue({} as never);
       await anonymiseUser("user-1");
       const call = prismaMock.user.update.mock.calls[0];
-      expect(call?.[0]?.data?.email).toMatch(/^deleted-.*@deleted\.etash\.com$/);
+      expect(call?.[0]?.data?.email).toMatch(/^deleted-.*@deleted\.opencan\.dev$/);
       expect(call?.[0]?.data?.name).toBeNull();
       expect(call?.[0]?.data?.passwordHash).toBeNull();
     });

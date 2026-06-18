@@ -19,7 +19,7 @@ export default async function Home() {
         Collect feedback. Ship what matters.
       </h1>
       <p className="mt-6 max-w-xl text-lg text-gray-500">
-        Etash is open-source customer feedback management. Self-host for free.
+        OpenCan is open-source customer feedback management. Self-host for free.
       </p>
       <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
         <Link href="/boards" className={primaryCta}>
