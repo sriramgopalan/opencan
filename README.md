@@ -10,6 +10,8 @@
 [![CI](https://github.com/sriramgopalan/opencan/actions/workflows/ci.yml/badge.svg)](https://github.com/sriramgopalan/opencan/actions/workflows/ci.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
+**[Live Demo →](https://demo.opencan.dev)**
+
 ---
 
 ## What is OpenCan?
@@ -43,6 +45,12 @@ OpenCan is a self-hosted feedback management platform — think Canny, but open-
 | License | AGPL-3.0 |
 
 ---
+
+## Demo
+
+Try OpenCan without installing anything: **[demo.opencan.dev](https://demo.opencan.dev)**
+
+> Guest browsing is enabled. Register an account to submit feedback and vote on posts.
 
 ## Quick Start (Self-hosted)
 

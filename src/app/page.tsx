@@ -33,7 +33,7 @@ export default async function Home() {
         )}
         {isAdmin && (
           <Link href="/admin/boards" className={secondaryCta}>
-            Dashboard
+            Admin Dashboard
           </Link>
         )}
       </div>

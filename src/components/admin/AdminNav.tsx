@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { label: "Overview", href: "/admin", exact: true },
   { label: "Users", href: "/admin/users", exact: false },
   { label: "Boards", href: "/admin/boards", exact: false },
-  { label: "Post moderation", href: "/admin/posts", exact: false },
+  { label: "Posts", href: "/admin/posts", exact: false },
 ] as const;
 
 interface AdminNavProps {
