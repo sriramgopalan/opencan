@@ -1,3 +1,5 @@
+![OpenCan](./docs/readme-banner.png)
+
 # OpenCan
 
 **Open-source customer feedback management. Collect feedback, prioritize features, close the loop.**
