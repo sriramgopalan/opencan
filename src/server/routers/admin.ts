@@ -4,7 +4,7 @@ import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { addToBlocklist, removeFromBlocklist } from "@/lib/session-blocklist";
 import { prisma } from "@/server/db";
-import { getWorkspaceStats, listAdminUsers } from "@/server/repositories/admin";
+import { getWorkspaceStats, listAdminUsers, listAllPosts } from "@/server/repositories/admin";
 import { invalidateAllUserSessionCaches } from "@/server/repositories/session";
 import {
   adminDeleteUser,
@@ -61,6 +61,31 @@ export const adminRouter = createTRPCRouter({
     )
     .query(async ({ input }) => {
       return listAdminUsers(input);
+    }),
+
+  listAllPosts: adminProcedure
+    .input(
+      z
+        .object({
+          page: z.number().int().min(1).default(1),
+          limit: z.number().int().min(1).max(100).default(20),
+          boardId: z.string().cuid().optional(),
+          status: z
+            .enum([
+              "PENDING",
+              "OPEN",
+              "UNDER_REVIEW",
+              "PLANNED",
+              "IN_PROGRESS",
+              "SHIPPED",
+              "CLOSED",
+            ] as const)
+            .optional(),
+        })
+        .strict(),
+    )
+    .query(async ({ input }) => {
+      return listAllPosts(input);
     }),
 
   updateUserRole: adminMutationProcedure

@@ -1,7 +1,9 @@
-import { prisma } from "@/server/db";
-import type { AdminUsersResult, PendingPost, WorkspaceStats } from "@/types/admin";
+import type { PostStatus } from "@prisma/client";
 
-export type { AdminUser, AdminUsersResult, PendingPost, WorkspaceStats } from "@/types/admin";
+import { prisma } from "@/server/db";
+import type { AdminPostsResult, AdminUsersResult, PendingPost, WorkspaceStats } from "@/types/admin";
+
+export type { AdminPost, AdminPostsResult, AdminUser, AdminUsersResult, PendingPost, WorkspaceStats } from "@/types/admin";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -81,6 +83,49 @@ export async function listAdminUsers({
 
 export async function getPendingPostCount(): Promise<number> {
   return prisma.post.count({ where: { status: "PENDING" } });
+}
+
+export async function listAllPosts({
+  status,
+  boardId,
+  page = 1,
+  limit = 20,
+}: {
+  status?: PostStatus;
+  boardId?: string;
+  page?: number;
+  limit?: number;
+} = {}): Promise<AdminPostsResult> {
+  const where = {
+    ...(status !== undefined ? { status } : {}),
+    ...(boardId !== undefined ? { boardId } : {}),
+  };
+
+  const [posts, total] = await Promise.all([
+    prisma.post.findMany({
+      where,
+      select: {
+        id: true,
+        postNumber: true,
+        title: true,
+        description: true,
+        status: true,
+        isPinned: true,
+        voteCount: true,
+        guestName: true,
+        authorId: true,
+        createdAt: true,
+        board: { select: { id: true, slug: true, name: true } },
+        author: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.post.count({ where }),
+  ]);
+
+  return { posts, total, page, totalPages: Math.ceil(total / limit) };
 }
 
 export async function listPendingPosts(): Promise<PendingPost[]> {

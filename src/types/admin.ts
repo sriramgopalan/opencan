@@ -1,3 +1,5 @@
+import type { PostStatus } from "@prisma/client";
+
 export interface WorkspaceStats {
   totalBoards: number;
   totalPosts: number;
@@ -37,4 +39,26 @@ export interface PendingPost {
   createdAt: Date;
   board: { id: string; slug: string; name: string };
   author: { id: string; name: string | null } | null;
+}
+
+export interface AdminPost {
+  id: string;
+  postNumber: number;
+  title: string;
+  description: string | null;
+  status: PostStatus;
+  isPinned: boolean;
+  voteCount: number;
+  guestName: string | null;
+  authorId: string | null;
+  createdAt: Date;
+  board: { id: string; slug: string; name: string };
+  author: { id: string; name: string | null; email: string } | null;
+}
+
+export interface AdminPostsResult {
+  posts: AdminPost[];
+  total: number;
+  page: number;
+  totalPages: number;
 }

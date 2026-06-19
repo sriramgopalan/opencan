@@ -136,7 +136,7 @@ export default async function PublicBoardPage({ params, searchParams }: Props) {
 
       {canPost && (
         <section className="mb-8 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">Submit feedback</h2>
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">Create a post</h2>
           <PostForm boardId={board.id} boardSlug={slug} isAuthenticated={!!callerId} />
         </section>
       )}
