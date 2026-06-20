@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { auth } from "@/auth";
@@ -12,27 +13,30 @@ export async function SiteNav() {
   return (
     <header className="h-14 border-b border-gray-200 bg-white">
       <nav className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-6">
           <Link
             href="/"
-            className="text-base font-semibold tracking-tight text-gray-900 transition-colors hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            OpenCan
+            <Image src="/opencan-logo.png" alt="" width={28} height={28} className="h-7 w-7" />
+            <span className="text-xl font-bold text-blue-600">OpenCan</span>
           </Link>
-          <Link
-            href="/boards"
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Boards
-          </Link>
-          {isAdmin && (
+          <div className="flex items-center gap-1">
             <Link
-              href="/admin"
+              href="/boards"
               className="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              Admin Dashboard
+              Boards
             </Link>
-          )}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Admin
+              </Link>
+            )}
+          </div>
         </div>
 
         {email ? (
