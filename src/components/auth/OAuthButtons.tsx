@@ -13,6 +13,8 @@ interface FieldsProps {
   onPassword: (v: string) => void;
   autoCompletePassword?: "current-password" | "new-password";
   minLengthPassword?: number;
+  name?: string;
+  onName?: (v: string) => void;
 }
 
 export function EmailPasswordFields({
@@ -22,9 +24,30 @@ export function EmailPasswordFields({
   onPassword,
   autoCompletePassword = "current-password",
   minLengthPassword,
+  name,
+  onName,
 }: FieldsProps) {
   return (
     <div className="space-y-4">
+      {onName !== undefined && (
+        <div>
+          <label htmlFor="name" className={labelClass}>
+            Display name
+          </label>
+          <input
+            id="name"
+            type="text"
+            autoComplete="name"
+            value={name ?? ""}
+            onChange={(e) => onName(e.target.value)}
+            required
+            minLength={2}
+            maxLength={50}
+            placeholder="Your name"
+            className={inputClass}
+          />
+        </div>
+      )}
       <div>
         <label htmlFor="email" className={labelClass}>
           Email

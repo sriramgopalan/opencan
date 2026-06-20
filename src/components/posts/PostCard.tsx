@@ -14,17 +14,26 @@ interface Props {
 export function PostCard({ post, boardSlug }: Props) {
   return (
     <article
-      className={`flex gap-4 rounded-lg border bg-white p-4 transition-colors hover:bg-gray-50 ${
+      className={`relative flex gap-4 rounded-lg border bg-white p-4 transition-colors hover:bg-gray-50 ${
         post.isPinned ? "border-blue-200" : "border-gray-200"
       }`}
     >
-      <VoteButton
-        postId={post.id}
-        initialVoteCount={post.voteCount}
-        initialHasVoted={post.hasVoted}
+      <Link
+        href={`/boards/${boardSlug}/posts/${post.postNumber}`}
+        className="absolute inset-0 z-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+        aria-label={post.title}
+        tabIndex={-1}
       />
 
-      <div className="min-w-0 flex-1">
+      <div className="relative z-10">
+        <VoteButton
+          postId={post.id}
+          initialVoteCount={post.voteCount}
+          initialHasVoted={post.hasVoted}
+        />
+      </div>
+
+      <div className="relative z-10 min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           {post.isPinned && (
             <Pin
@@ -32,12 +41,9 @@ export function PostCard({ post, boardSlug }: Props) {
               aria-label="Pinned"
             />
           )}
-          <Link
-            href={`/boards/${boardSlug}/posts/${post.postNumber}`}
-            className="truncate font-semibold text-gray-900 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
+          <span className="truncate font-semibold text-gray-900">
             {post.title}
-          </Link>
+          </span>
           <StatusBadge status={post.status} />
         </div>
 

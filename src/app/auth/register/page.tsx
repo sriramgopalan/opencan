@@ -6,6 +6,7 @@ import { useState } from "react";
 import { EmailPasswordFields } from "@/components/auth/OAuthButtons";
 
 export default function RegisterPage() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +20,7 @@ export default function RegisterPage() {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ name, email, password }),
     });
 
     if (!res.ok) {
@@ -53,6 +54,8 @@ export default function RegisterPage() {
         </h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <EmailPasswordFields
+            name={name}
+            onName={setName}
             email={email}
             password={password}
             onEmail={setEmail}
