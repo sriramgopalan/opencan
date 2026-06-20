@@ -10,6 +10,7 @@ import { createUser, getUserByEmail } from "@/server/repositories/user";
 
 const registerSchema = z
   .object({
+    name: z.string().min(2, "Display name must be at least 2 characters").max(50, "Display name must be at most 50 characters"),
     email: z.string().email(),
     password: z.string().min(12, "Password must be at least 12 characters"),
   })
@@ -38,7 +39,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
-    const { email, password } = parsed.data;
+    const { name, email, password } = parsed.data;
 
     const existing = await getUserByEmail(email);
     if (existing) {
@@ -52,7 +53,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
 
     const passwordHash = await hash(password);
-    const user = await createUser({ email, passwordHash });
+    const user = await createUser({ name, email, passwordHash });
 
     await issueEmailVerification(email, user.id);
 
