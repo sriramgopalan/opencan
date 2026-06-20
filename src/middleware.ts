@@ -21,7 +21,8 @@ export async function middleware(req: NextRequest) {
     nextUrl.pathname.startsWith("/api/auth") ||
     nextUrl.pathname.startsWith("/api/trpc") ||
     nextUrl.pathname === "/robots.txt" ||
-    nextUrl.pathname === "/sitemap.xml";
+    nextUrl.pathname === "/sitemap.xml" ||
+    nextUrl.pathname === "/opencan-logo.png";
 
   if (isPublicPath) return NextResponse.next();
 

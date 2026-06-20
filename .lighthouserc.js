@@ -31,6 +31,9 @@ module.exports = {
         "legacy-javascript-insight":      ["warn", {}],
         "network-dependency-tree-insight":["warn", {}],
         "unused-javascript":              ["warn", {}],
+        // Logo PNG in nav — acceptable for a small branding asset
+        "uses-responsive-images":         ["warn", {}],
+        "image-delivery-insight":         ["warn", {}],
       },
     },
     upload: {
