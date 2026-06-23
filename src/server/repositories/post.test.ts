@@ -22,6 +22,7 @@ const {
   createPost,
   deletePost,
   getPostAuthorForNotification,
+  getPostAuthorId,
   getPostById,
   getPostByNumber,
   getRoadmapPosts,
@@ -788,6 +789,22 @@ describe("post repository", () => {
 
       expect(result[0]?.id).toBe("post-a");
       expect(result[1]?.id).toBe("post-b");
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // getPostAuthorId
+  // ---------------------------------------------------------------------------
+
+  describe("getPostAuthorId", () => {
+    it("returns authorId when post exists", async () => {
+      prismaMock.post.findUnique.mockResolvedValue({ authorId: USER_ID } as never);
+      expect(await getPostAuthorId(POST_ID)).toBe(USER_ID);
+    });
+
+    it("returns null when post does not exist", async () => {
+      prismaMock.post.findUnique.mockResolvedValue(null);
+      expect(await getPostAuthorId("missing")).toBeNull();
     });
   });
 

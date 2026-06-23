@@ -23,6 +23,9 @@ vi.mock("@/lib/redis", () => ({
     pipeline: vi.fn(),
   },
 }));
+vi.mock("@/lib/email", () => ({
+  sendStatusChangeEmail: vi.fn().mockResolvedValue(undefined),
+}));
 
 const prismaMock = prisma as unknown as DeepMockProxy<PrismaClient>;
 
@@ -31,6 +34,7 @@ const { createCallerFactory } = await import("@/server/trpc");
 const { createTestContext, createAuthedContext, createAdminContext } = await import(
   "@/tests/context"
 );
+const { sendStatusChangeEmail } = await import("@/lib/email");
 
 const createCaller = createCallerFactory(postRouter);
 // jscpd:ignore-end
@@ -466,6 +470,79 @@ describe("postRouter", () => {
         caller.setStatus({ id: "cnotfound0000001", status: "PLANNED" }),
       ).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
+
+    it("skips notification for guest post (no authorEmail)", async () => {
+      prismaMock.post.findUnique
+        .mockResolvedValueOnce({ status: PostStatus.OPEN } as never)
+        .mockResolvedValueOnce({
+          postNumber: 1,
+          title: "Guest post",
+          board: { slug: "feedback" },
+          author: null,
+        } as never);
+      prismaMock.post.update.mockResolvedValue({
+        id: POST_ID,
+        status: PostStatus.PLANNED,
+        updatedAt: new Date(),
+      } as never);
+
+      const caller = createCaller(createAdminContext(ADMIN_ID));
+      await caller.setStatus({ id: POST_ID, status: "PLANNED" });
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(vi.mocked(sendStatusChangeEmail)).not.toHaveBeenCalled();
+    });
+
+    it("skips notification when author has opted out", async () => {
+      prismaMock.post.findUnique
+        .mockResolvedValueOnce({ status: PostStatus.OPEN } as never)
+        .mockResolvedValueOnce({
+          postNumber: 2,
+          title: "My post",
+          board: { slug: "ideas" },
+          author: { email: "quiet@example.com", notifyOnStatusChange: false },
+        } as never);
+      prismaMock.post.update.mockResolvedValue({
+        id: POST_ID,
+        status: PostStatus.PLANNED,
+        updatedAt: new Date(),
+      } as never);
+
+      const caller = createCaller(createAdminContext(ADMIN_ID));
+      await caller.setStatus({ id: POST_ID, status: "PLANNED" });
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(vi.mocked(sendStatusChangeEmail)).not.toHaveBeenCalled();
+    });
+
+    it("sends notification when author is opted in", async () => {
+      prismaMock.post.findUnique
+        .mockResolvedValueOnce({ status: PostStatus.OPEN } as never)
+        .mockResolvedValueOnce({
+          postNumber: 7,
+          title: "Feature request",
+          board: { slug: "features" },
+          author: { email: "author@example.com", notifyOnStatusChange: true },
+        } as never);
+      prismaMock.post.update.mockResolvedValue({
+        id: POST_ID,
+        status: PostStatus.PLANNED,
+        updatedAt: new Date(),
+      } as never);
+
+      const caller = createCaller(createAdminContext(ADMIN_ID));
+      await caller.setStatus({ id: POST_ID, status: "PLANNED" });
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(vi.mocked(sendStatusChangeEmail)).toHaveBeenCalledWith(
+        "author@example.com",
+        "Feature request",
+        PostStatus.OPEN,
+        PostStatus.PLANNED,
+        expect.stringContaining("/boards/features/posts/7"),
+        expect.stringContaining("/settings"),
+      );
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -566,6 +643,7 @@ describe("postRouter", () => {
 
     it("returns INTERNAL_SERVER_ERROR when toggleVote fails unexpectedly", async () => {
       mockToggleVotePost();
+      prismaMock.vote.findMany.mockResolvedValue([]);
       prismaMock.$transaction.mockRejectedValue(new Error("db down"));
 
       const caller = createCaller(createAuthedContext(USER_ID));
