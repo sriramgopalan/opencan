@@ -14,6 +14,7 @@ import type {
   PostListResult,
   PostViewer,
   PublicPostView,
+  RoadmapPost,
   SimilarPost,
 } from "@/types/post";
 
@@ -575,4 +576,56 @@ export async function toggleVote(
   });
   logger.info({ postId, userId: "[guest]", action: "vote" }, "vote recorded");
   return { voteCount: post.voteCount, userHasVoted: false };
+}
+
+// ---------------------------------------------------------------------------
+// Roadmap
+// ---------------------------------------------------------------------------
+
+const ROADMAP_STATUSES = [
+  PostStatus.UNDER_REVIEW,
+  PostStatus.PLANNED,
+  PostStatus.IN_PROGRESS,
+  PostStatus.SHIPPED,
+] as const;
+
+const ROADMAP_SELECT = {
+  id: true,
+  postNumber: true,
+  boardId: true,
+  title: true,
+  description: true,
+  status: true,
+  voteCount: true,
+  createdAt: true,
+  board: { select: { slug: true, name: true } },
+} as const;
+
+type RoadmapRow = Prisma.PostGetPayload<{ select: typeof ROADMAP_SELECT }>;
+
+const ROADMAP_QUERY_CAP = 200;
+
+export async function getRoadmapPosts(): Promise<RoadmapPost[]> {
+  const rows: RoadmapRow[] = await prisma.post.findMany({
+    where: {
+      status: { in: [...ROADMAP_STATUSES] },
+      board: { isPublic: true },
+    },
+    select: ROADMAP_SELECT,
+    orderBy: [{ voteCount: "desc" }, { createdAt: "desc" }],
+    take: ROADMAP_QUERY_CAP,
+  });
+
+  return rows.map((r) => ({
+    id: r.id,
+    postNumber: r.postNumber,
+    boardId: r.boardId,
+    boardSlug: r.board.slug,
+    boardName: r.board.name,
+    title: r.title,
+    description: r.description,
+    status: r.status,
+    voteCount: r.voteCount,
+    createdAt: r.createdAt,
+  }));
 }

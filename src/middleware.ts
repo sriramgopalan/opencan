@@ -18,6 +18,7 @@ export async function middleware(req: NextRequest) {
     nextUrl.pathname === "/" ||
     nextUrl.pathname.startsWith("/auth/") ||
     nextUrl.pathname.startsWith("/boards") ||
+    nextUrl.pathname === "/roadmap" ||
     nextUrl.pathname.startsWith("/api/auth") ||
     nextUrl.pathname.startsWith("/api/trpc") ||
     nextUrl.pathname === "/robots.txt" ||

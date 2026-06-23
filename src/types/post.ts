@@ -70,3 +70,16 @@ export type PostViewer = {
   callerId?: string;
   hashedIp?: string;
 };
+
+export interface RoadmapPost {
+  id: string;
+  postNumber: number;
+  boardId: string;
+  boardSlug: string;
+  boardName: string;
+  title: string;
+  description: string | null;
+  status: PostStatus;
+  voteCount: number;
+  createdAt: Date;
+}

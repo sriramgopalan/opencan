@@ -23,6 +23,7 @@ const {
   deletePost,
   getPostById,
   getPostByNumber,
+  getRoadmapPosts,
   getSimilarPosts,
   hashIp,
   listPosts,
@@ -697,6 +698,93 @@ describe("post repository", () => {
       prismaMock.$queryRaw.mockResolvedValue([] as never);
       const result = await getSimilarPosts(BOARD_ID, "unique title");
       expect(result).toHaveLength(0);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // getRoadmapPosts
+  // ---------------------------------------------------------------------------
+
+  describe("getRoadmapPosts", () => {
+    function makeRoadmapRow(overrides: Record<string, unknown> = {}) {
+      return {
+        id: POST_ID,
+        postNumber: 1,
+        boardId: BOARD_ID,
+        title: "My feature",
+        description: "Please add this",
+        status: PostStatus.PLANNED,
+        voteCount: 5,
+        createdAt: new Date("2025-01-01"),
+        board: { slug: "general", name: "General" },
+        ...overrides,
+      };
+    }
+
+    it("queries only roadmap statuses on public boards ordered by votes", async () => {
+      prismaMock.post.findMany.mockResolvedValue([]);
+
+      await getRoadmapPosts();
+
+      expect(prismaMock.post.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            status: { in: expect.arrayContaining(["UNDER_REVIEW", "PLANNED", "IN_PROGRESS", "SHIPPED"]) },
+            board: { isPublic: true },
+          },
+          orderBy: [{ voteCount: "desc" }, { createdAt: "desc" }],
+          take: 200,
+        }),
+      );
+    });
+
+    it("maps board slug and name onto each returned post", async () => {
+      prismaMock.post.findMany.mockResolvedValue([
+        makeRoadmapRow({ board: { slug: "my-board", name: "My Board" } }),
+      ] as never);
+
+      const result = await getRoadmapPosts();
+
+      expect(result[0]).toMatchObject({ boardSlug: "my-board", boardName: "My Board" });
+    });
+
+    it("returns all mapped fields correctly", async () => {
+      const row = makeRoadmapRow({ status: PostStatus.SHIPPED, voteCount: 10 });
+      prismaMock.post.findMany.mockResolvedValue([row] as never);
+
+      const [post] = await getRoadmapPosts();
+
+      expect(post).toMatchObject({
+        id: POST_ID,
+        postNumber: 1,
+        boardId: BOARD_ID,
+        boardSlug: "general",
+        boardName: "General",
+        title: "My feature",
+        status: PostStatus.SHIPPED,
+        voteCount: 10,
+      });
+    });
+
+    it("returns empty array when no roadmap posts exist", async () => {
+      prismaMock.post.findMany.mockResolvedValue([]);
+
+      const result = await getRoadmapPosts();
+
+      expect(result).toEqual([]);
+    });
+
+    it("returns multiple posts preserving order from the database", async () => {
+      const rows = [
+        makeRoadmapRow({ id: "post-a", voteCount: 20, status: PostStatus.PLANNED }),
+        makeRoadmapRow({ id: "post-b", voteCount: 10, status: PostStatus.IN_PROGRESS }),
+      ];
+      prismaMock.post.findMany.mockResolvedValue(rows as never);
+
+      const result = await getRoadmapPosts();
+
+      expect(result[0]?.id).toBe("post-a");
+      expect(result[1]?.id).toBe("post-b");
     });
   });
 });

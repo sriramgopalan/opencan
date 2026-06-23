@@ -28,6 +28,12 @@ export async function SiteNav() {
             >
               Boards
             </Link>
+            <Link
+              href="/roadmap"
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Roadmap
+            </Link>
             {isAdmin && (
               <Link
                 href="/admin"
