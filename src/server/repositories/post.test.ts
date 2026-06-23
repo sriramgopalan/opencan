@@ -27,6 +27,7 @@ const {
   getPostByNumber,
   getPostsByAuthor,
   getRoadmapPosts,
+  searchPosts,
   getSimilarPosts,
   hashIp,
   listPosts,
@@ -681,6 +682,68 @@ describe("post repository", () => {
       prismaMock.vote.findMany.mockResolvedValue([]);
       const result = await listPosts({ boardId: BOARD_ID, isAdmin: false, orderBy });
       expect(result.items).toHaveLength(1);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // searchPosts
+  // ---------------------------------------------------------------------------
+
+  describe("searchPosts", () => {
+    it("returns empty array when no posts match", async () => {
+      prismaMock.post.findMany.mockResolvedValue([]);
+      const result = await searchPosts(BOARD_ID, "widget");
+      expect(result).toHaveLength(0);
+    });
+
+    it("returns matched posts with hasVoted=false", async () => {
+      prismaMock.post.findMany.mockResolvedValue([BASE_POST] as never);
+      const result = await searchPosts(BOARD_ID, "dark mode");
+      expect(result).toHaveLength(1);
+      expect(result[0]?.hasVoted).toBe(false);
+    });
+
+    it("queries with case-insensitive title filter scoped to boardId", async () => {
+      prismaMock.post.findMany.mockResolvedValue([]);
+      await searchPosts(BOARD_ID, "Dark Mode");
+      expect(prismaMock.post.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            boardId: BOARD_ID,
+            title: { contains: "Dark Mode", mode: "insensitive" },
+          }),
+        }),
+      );
+    });
+
+    it("excludes PENDING posts for non-admin without callerId", async () => {
+      prismaMock.post.findMany.mockResolvedValue([]);
+      await searchPosts(BOARD_ID, "feature");
+      expect(prismaMock.post.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            AND: [{ OR: [{ status: { not: PostStatus.PENDING } }] }],
+          }),
+        }),
+      );
+    });
+
+    it("includes all posts for admin", async () => {
+      prismaMock.post.findMany.mockResolvedValue([]);
+      await searchPosts(BOARD_ID, "feature", { isAdmin: true });
+      expect(prismaMock.post.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ AND: [{}] }),
+        }),
+      );
+    });
+
+    it("clamps limit to 50", async () => {
+      prismaMock.post.findMany.mockResolvedValue([]);
+      await searchPosts(BOARD_ID, "x", { limit: 999 });
+      expect(prismaMock.post.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 50 }),
+      );
     });
   });
 

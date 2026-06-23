@@ -24,6 +24,12 @@ const flags = {
     owner: "sriramgopalan",
     trackingIssue: "gap-3-my-posts",
   },
+  POST_SEARCH: {
+    description: "Search input on board pages to filter posts by title",
+    defaultValue: true,
+    owner: "sriramgopalan",
+    trackingIssue: "gap-4-post-search",
+  },
 } as const satisfies Record<string, FlagDefinition>;
 
 type FeatureFlag = keyof typeof flags;

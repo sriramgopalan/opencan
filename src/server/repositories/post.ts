@@ -12,6 +12,7 @@ import type {
   AdminPostView,
   CreatedPost,
   MyPost,
+  PostListItem,
   PostListResult,
   PostViewer,
   PublicPostView,
@@ -389,6 +390,43 @@ export async function getSimilarPosts(boardId: string, title: string): Promise<S
     title: r.title,
     voteCount: r.voteCount,
     status: r.status as PostStatus,
+  }));
+}
+
+export async function searchPosts(
+  boardId: string,
+  query: string,
+  opts: { isAdmin?: boolean; callerId?: string; limit?: number } = {},
+): Promise<PostListItem[]> {
+  const { isAdmin = false, callerId, limit = 20 } = opts;
+  const clampedLimit = Math.min(Math.max(1, limit), 50);
+
+  const visibilityWhere: Prisma.PostWhereInput = isAdmin
+    ? {}
+    : {
+        OR: [
+          { status: { not: PostStatus.PENDING } },
+          ...(callerId ? [{ status: PostStatus.PENDING, authorId: callerId }] : []),
+        ],
+      };
+
+  const rows = await prisma.post.findMany({
+    where: { boardId, title: { contains: query, mode: "insensitive" }, AND: [visibilityWhere] },
+    orderBy: [{ voteCount: "desc" }, { createdAt: "desc" }],
+    take: clampedLimit,
+    select: PUBLIC_SELECT,
+  });
+
+  return rows.map((r) => ({
+    id: r.id,
+    postNumber: r.postNumber,
+    title: r.title,
+    description: r.description,
+    status: r.status,
+    isPinned: r.isPinned,
+    voteCount: r.voteCount,
+    hasVoted: false,
+    createdAt: r.createdAt,
   }));
 }
 
