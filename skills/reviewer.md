@@ -8,6 +8,26 @@ with the actual content, and paste into a new Claude Chat session.
 
 ---
 
+## Mandatory review schedule
+
+After **every gap PR is merged to main**, run Templates 2 and 3 (Security and
+DRY) against all new code introduced by that gap — before starting the next
+gap. This is not optional. Do not proceed to the next gap until both reviews
+are complete and all findings are resolved.
+
+Steps:
+1. Gap PR merges → `git checkout main && git pull`
+2. Run Security Review (Template 2) on all new/modified files
+3. Run DRY Review (Template 3) on all new/modified files
+4. Implement every finding on a `fix/security-dry-review` branch (or similar)
+5. Open a PR for the fixes, wait for CI, merge
+6. Then start the next gap
+
+Template 1 (Spec Adherence) is optional post-merge but **required** before
+opening a PR for any gap implementation.
+
+---
+
 ## Template 1 — Spec Adherence Review
 
 **When to use**: after implementation, before opening a PR. Paste the spec and
