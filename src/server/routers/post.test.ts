@@ -471,69 +471,37 @@ describe("postRouter", () => {
       ).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
 
-    it("skips notification for guest post (no authorEmail)", async () => {
+    async function triggerStatusChange(notificationRow: Record<string, unknown>) {
       prismaMock.post.findUnique
         .mockResolvedValueOnce({ status: PostStatus.OPEN } as never)
-        .mockResolvedValueOnce({
-          postNumber: 1,
-          title: "Guest post",
-          board: { slug: "feedback" },
-          author: null,
-        } as never);
+        .mockResolvedValueOnce(notificationRow as never);
       prismaMock.post.update.mockResolvedValue({
-        id: POST_ID,
-        status: PostStatus.PLANNED,
-        updatedAt: new Date(),
+        id: POST_ID, status: PostStatus.PLANNED, updatedAt: new Date(),
       } as never);
-
-      const caller = createCaller(createAdminContext(ADMIN_ID));
-      await caller.setStatus({ id: POST_ID, status: "PLANNED" });
+      await createCaller(createAdminContext(ADMIN_ID)).setStatus({ id: POST_ID, status: "PLANNED" });
       await new Promise(r => setTimeout(r, 0));
+    }
 
+    it("skips notification for guest post (no authorEmail)", async () => {
+      await triggerStatusChange({
+        postNumber: 1, title: "Guest post", board: { slug: "feedback" }, author: null,
+      });
       expect(vi.mocked(sendStatusChangeEmail)).not.toHaveBeenCalled();
     });
 
     it("skips notification when author has opted out", async () => {
-      prismaMock.post.findUnique
-        .mockResolvedValueOnce({ status: PostStatus.OPEN } as never)
-        .mockResolvedValueOnce({
-          postNumber: 2,
-          title: "My post",
-          board: { slug: "ideas" },
-          author: { email: "quiet@example.com", notifyOnStatusChange: false },
-        } as never);
-      prismaMock.post.update.mockResolvedValue({
-        id: POST_ID,
-        status: PostStatus.PLANNED,
-        updatedAt: new Date(),
-      } as never);
-
-      const caller = createCaller(createAdminContext(ADMIN_ID));
-      await caller.setStatus({ id: POST_ID, status: "PLANNED" });
-      await new Promise(r => setTimeout(r, 0));
-
+      await triggerStatusChange({
+        postNumber: 2, title: "My post", board: { slug: "ideas" },
+        author: { email: "quiet@example.com", notifyOnStatusChange: false },
+      });
       expect(vi.mocked(sendStatusChangeEmail)).not.toHaveBeenCalled();
     });
 
     it("sends notification when author is opted in", async () => {
-      prismaMock.post.findUnique
-        .mockResolvedValueOnce({ status: PostStatus.OPEN } as never)
-        .mockResolvedValueOnce({
-          postNumber: 7,
-          title: "Feature request",
-          board: { slug: "features" },
-          author: { email: "author@example.com", notifyOnStatusChange: true },
-        } as never);
-      prismaMock.post.update.mockResolvedValue({
-        id: POST_ID,
-        status: PostStatus.PLANNED,
-        updatedAt: new Date(),
-      } as never);
-
-      const caller = createCaller(createAdminContext(ADMIN_ID));
-      await caller.setStatus({ id: POST_ID, status: "PLANNED" });
-      await new Promise(r => setTimeout(r, 0));
-
+      await triggerStatusChange({
+        postNumber: 7, title: "Feature request", board: { slug: "features" },
+        author: { email: "author@example.com", notifyOnStatusChange: true },
+      });
       expect(vi.mocked(sendStatusChangeEmail)).toHaveBeenCalledWith(
         "author@example.com",
         "Feature request",
