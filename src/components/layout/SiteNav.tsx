@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { auth } from "@/auth";
@@ -17,8 +18,14 @@ export async function SiteNav() {
             href="/"
             className="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/opencan-logo.png" alt="" aria-hidden="true" className="h-7 w-7 object-contain" />
+            <Image
+              src="/opencan-logo.png"
+              alt=""
+              aria-hidden="true"
+              width={28}
+              height={28}
+              className="object-contain"
+            />
             <span className="text-xl font-bold text-blue-600">OpenCan</span>
           </Link>
           <div className="flex items-center gap-1">

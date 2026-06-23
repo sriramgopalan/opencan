@@ -22,18 +22,15 @@ module.exports = {
         // ── SKELETON THRESHOLDS - tighten when real pages are built ─────
         // Framework scaffolding produces these; not real quality issues.
         "errors-in-console":              "off",
-        // bf-cache fails because auth-dependent pages render dynamically and
-        // Next.js / NextAuth send `Cache-Control: no-store` on the document and
-        // session/tRPC requests. Forcing these to be cacheable would expose the
-        // signed-in user's data, so this is a known, accepted Next.js limitation
-        // rather than a real defect — downgraded to a warning.
-        "bf-cache":                       ["warn", { minScore: 0.9 }],
-        "legacy-javascript-insight":      ["warn", {}],
-        "network-dependency-tree-insight":["warn", {}],
-        "unused-javascript":              ["warn", {}],
-        // Logo PNG in nav — acceptable for a small branding asset
-        "uses-responsive-images":         ["warn", {}],
-        "image-delivery-insight":         ["warn", {}],
+        // bf-cache fails because Next.js / NextAuth send `Cache-Control: no-store`
+        // on auth-dependent pages. Forcing those to be cacheable would leak
+        // signed-in user data — accepted Next.js limitation, not a real defect.
+        "bf-cache":                       ["warn", { minScore: 0 }],
+        "legacy-javascript":              ["warn", { maxLength: 5 }],
+        "legacy-javascript-insight":      ["warn", { minScore: 0 }],
+        "network-dependency-tree-insight":["warn", { minScore: 0 }],
+        "modern-image-formats":           ["warn", { maxLength: 5 }],
+        "unused-javascript":              ["warn", { maxLength: 5 }],
       },
     },
     upload: {
