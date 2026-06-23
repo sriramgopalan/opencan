@@ -16,7 +16,7 @@ const { isEnabled } = await import("@/lib/flags");
 const WEBHOOK = {
   id: "cwh1234567890000",
   url: "https://example.com/hook",
-  secret: "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+  secret: "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890", // gitleaks:allow
 };
 // jscpd:ignore-end
 

@@ -28,7 +28,7 @@ function makeRow(overrides: Record<string, unknown> = {}) {
   return {
     id: WEBHOOK_ID,
     url: "https://example.com/hook",
-    secret: "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+    secret: "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890", // gitleaks:allow
     events: ["post.created"],
     isActive: true,
     createdAt: NOW,
