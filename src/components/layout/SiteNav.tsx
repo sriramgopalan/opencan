@@ -41,6 +41,14 @@ export async function SiteNav() {
             >
               Roadmap
             </Link>
+            {email && (
+              <Link
+                href="/my-posts"
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                My Posts
+              </Link>
+            )}
             {isAdmin && (
               <Link
                 href="/admin"

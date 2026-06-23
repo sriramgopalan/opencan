@@ -25,6 +25,7 @@ const {
   getPostAuthorId,
   getPostById,
   getPostByNumber,
+  getPostsByAuthor,
   getRoadmapPosts,
   getSimilarPosts,
   hashIp,
@@ -789,6 +790,62 @@ describe("post repository", () => {
 
       expect(result[0]?.id).toBe("post-a");
       expect(result[1]?.id).toBe("post-b");
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // getPostsByAuthor
+  // ---------------------------------------------------------------------------
+
+  describe("getPostsByAuthor", () => {
+    const BOARD_SLUG = "feedback";
+    const BOARD_NAME = "Feedback";
+
+    function makeMyPostRow(overrides: Record<string, unknown> = {}) {
+      return { ...BASE_POST, board: { slug: BOARD_SLUG, name: BOARD_NAME }, ...overrides };
+    }
+
+    it("returns empty items when user has no posts", async () => {
+      prismaMock.post.findMany.mockResolvedValue([]);
+      const result = await getPostsByAuthor(USER_ID);
+      expect(result.items).toHaveLength(0);
+      expect(result.nextCursor).toBeNull();
+    });
+
+    it("returns items with boardSlug and boardName", async () => {
+      prismaMock.post.findMany.mockResolvedValue([makeMyPostRow()] as never);
+      const result = await getPostsByAuthor(USER_ID);
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]?.boardSlug).toBe(BOARD_SLUG);
+      expect(result.items[0]?.boardName).toBe(BOARD_NAME);
+      expect(result.nextCursor).toBeNull();
+    });
+
+    it("returns nextCursor when more posts exist", async () => {
+      const posts = Array.from({ length: 21 }, (_, i) =>
+        makeMyPostRow({ id: `post-${i}`, postNumber: i + 1 }),
+      );
+      prismaMock.post.findMany.mockResolvedValue(posts as never);
+      const result = await getPostsByAuthor(USER_ID, { limit: 20 });
+      expect(result.items).toHaveLength(20);
+      expect(result.nextCursor).not.toBeNull();
+    });
+
+    it("decodes cursor and passes it to findMany", async () => {
+      const cursor = Buffer.from(`${new Date().toISOString()}|${POST_ID}`).toString("base64");
+      prismaMock.post.findMany.mockResolvedValue([]);
+      await getPostsByAuthor(USER_ID, { cursor });
+      expect(prismaMock.post.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ cursor: { id: POST_ID }, skip: 1 }),
+      );
+    });
+
+    it("clamps limit to 50", async () => {
+      prismaMock.post.findMany.mockResolvedValue([]);
+      await getPostsByAuthor(USER_ID, { limit: 999 });
+      expect(prismaMock.post.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 51 }),
+      );
     });
   });
 

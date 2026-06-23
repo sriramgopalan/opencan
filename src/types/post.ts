@@ -71,6 +71,18 @@ export type PostViewer = {
   hashedIp?: string;
 };
 
+export interface MyPost {
+  id: string;
+  postNumber: number;
+  title: string;
+  description: string | null;
+  status: PostStatus;
+  voteCount: number;
+  createdAt: Date;
+  boardSlug: string;
+  boardName: string;
+}
+
 export interface RoadmapPost {
   id: string;
   postNumber: number;

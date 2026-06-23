@@ -11,6 +11,7 @@ import { prisma } from "@/server/db";
 import type {
   AdminPostView,
   CreatedPost,
+  MyPost,
   PostListResult,
   PostViewer,
   PublicPostView,
@@ -637,6 +638,64 @@ const ROADMAP_SELECT = {
 type RoadmapRow = Prisma.PostGetPayload<{ select: typeof ROADMAP_SELECT }>;
 
 const ROADMAP_QUERY_CAP = 200;
+
+const MY_POST_SELECT = {
+  id: true,
+  postNumber: true,
+  title: true,
+  description: true,
+  status: true,
+  voteCount: true,
+  createdAt: true,
+  board: { select: { slug: true, name: true } },
+} as const;
+
+type MyPostRow = Prisma.PostGetPayload<{ select: typeof MY_POST_SELECT }>;
+
+export async function getPostsByAuthor(
+  authorId: string,
+  opts: { cursor?: string; limit?: number } = {},
+): Promise<{ items: MyPost[]; nextCursor: string | null }> {
+  const clampedLimit = Math.min(Math.max(1, opts.limit ?? 20), 50);
+  const cursorId = opts.cursor ? decodeCursor(opts.cursor) : undefined;
+  const orderBy: Prisma.PostOrderByWithRelationInput[] = [{ createdAt: "desc" }, { postNumber: "desc" }];
+
+  const rows: MyPostRow[] = await (cursorId
+    ? prisma.post.findMany({
+        where: { authorId },
+        orderBy,
+        take: clampedLimit + 1,
+        cursor: { id: cursorId },
+        skip: 1,
+        select: MY_POST_SELECT,
+      })
+    : prisma.post.findMany({
+        where: { authorId },
+        orderBy,
+        take: clampedLimit + 1,
+        select: MY_POST_SELECT,
+      }));
+
+  const hasNextPage = rows.length > clampedLimit;
+  const page = hasNextPage ? rows.slice(0, clampedLimit) : rows;
+  const last = page[page.length - 1];
+  const nextCursor = hasNextPage && last ? encodeCursor(last.createdAt, last.id) : null;
+
+  return {
+    items: page.map((r) => ({
+      id: r.id,
+      postNumber: r.postNumber,
+      title: r.title,
+      description: r.description,
+      status: r.status,
+      voteCount: r.voteCount,
+      createdAt: r.createdAt,
+      boardSlug: r.board.slug,
+      boardName: r.board.name,
+    })),
+    nextCursor,
+  };
+}
 
 export async function getRoadmapPosts(): Promise<RoadmapPost[]> {
   const rows: RoadmapRow[] = await prisma.post.findMany({

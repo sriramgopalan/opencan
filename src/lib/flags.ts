@@ -18,6 +18,12 @@ const flags = {
     owner: "sriramgopalan",
     trackingIssue: "gap-2-notifications",
   },
+  MY_POSTS: {
+    description: "Authenticated users can view all posts they have submitted via /my-posts",
+    defaultValue: true,
+    owner: "sriramgopalan",
+    trackingIssue: "gap-3-my-posts",
+  },
 } as const satisfies Record<string, FlagDefinition>;
 
 type FeatureFlag = keyof typeof flags;
