@@ -220,8 +220,15 @@ describe("changelog repository", () => {
       });
     });
 
+    it("throws CONFLICT when entry is already published", async () => {
+      prismaMock.changelogEntry.findUnique.mockResolvedValue({ id: ENTRY_ID, publishedAt: NOW } as never);
+      await expect(updateChangelogEntry(ENTRY_ID, { title: "New" })).rejects.toMatchObject({
+        code: "CONFLICT",
+      });
+    });
+
     it("updates title and replaces linked posts in a transaction", async () => {
-      prismaMock.changelogEntry.findUnique.mockResolvedValue({ id: ENTRY_ID } as never);
+      prismaMock.changelogEntry.findUnique.mockResolvedValue({ id: ENTRY_ID, publishedAt: null } as never);
       prismaMock.$transaction.mockImplementation(
         ((fn: (tx: unknown) => Promise<unknown>) => fn(prismaMock)) as never,
       );
@@ -240,7 +247,7 @@ describe("changelog repository", () => {
     });
 
     it("skips text update when neither title nor body is provided", async () => {
-      prismaMock.changelogEntry.findUnique.mockResolvedValue({ id: ENTRY_ID } as never);
+      prismaMock.changelogEntry.findUnique.mockResolvedValue({ id: ENTRY_ID, publishedAt: null } as never);
       prismaMock.$transaction.mockImplementation(
         ((fn: (tx: unknown) => Promise<unknown>) => fn(prismaMock)) as never,
       );
@@ -251,7 +258,7 @@ describe("changelog repository", () => {
     });
 
     it("clears all linked posts when linkedPostIds is empty array", async () => {
-      prismaMock.changelogEntry.findUnique.mockResolvedValue({ id: ENTRY_ID } as never);
+      prismaMock.changelogEntry.findUnique.mockResolvedValue({ id: ENTRY_ID, publishedAt: null } as never);
       prismaMock.$transaction.mockImplementation(
         ((fn: (tx: unknown) => Promise<unknown>) => fn(prismaMock)) as never,
       );

@@ -22,7 +22,7 @@ import {
   incrementFailedLoginCount,
   lockAccount,
   resetFailedLoginCount,
-  setNotificationPreference,
+  setNotificationPreferences,
   updatePasswordHash,
 } from "@/server/repositories/user";
 import {
@@ -164,13 +164,23 @@ export const authRouter = createTRPCRouter({
     }),
 
   updateNotificationPreferences: protectedProcedure
-    .input(z.object({ notifyOnStatusChange: z.boolean() }).strict())
-    .output(z.object({ notifyOnStatusChange: z.boolean() }))
+    .input(
+      z
+        .object({
+          notifyOnStatusChange: z.boolean().optional(),
+          notifyOnChangelog: z.boolean().optional(),
+        })
+        .strict()
+        .refine((v) => v.notifyOnStatusChange !== undefined || v.notifyOnChangelog !== undefined, {
+          message: "At least one preference must be provided.",
+        }),
+    )
+    .output(z.object({ notifyOnStatusChange: z.boolean().optional(), notifyOnChangelog: z.boolean().optional() }))
     .mutation(async ({ input, ctx }) => {
       const userId = ctx.session.user.id;
-      await setNotificationPreference(userId, input.notifyOnStatusChange);
+      await setNotificationPreferences(userId, input);
       logger.info({ userId }, "notification preferences updated");
-      return { notifyOnStatusChange: input.notifyOnStatusChange };
+      return input;
     }),
 
   resendVerification: protectedProcedure

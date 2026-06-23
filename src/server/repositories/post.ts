@@ -5,7 +5,7 @@ import { Prisma, PostStatus } from "@prisma/client";
 import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { encodeCursor, decodeCursor } from "@/lib/pagination";
+import { encodeCursor, decodeCursor, sliceAndCursor } from "@/lib/pagination";
 import { redis } from "@/lib/redis";
 import { prisma } from "@/server/db";
 import type {
@@ -172,20 +172,23 @@ async function isPendingVisible(postId: string, callerId?: string): Promise<bool
 // Build WHERE and ORDER BY
 // ---------------------------------------------------------------------------
 
+function buildVisibilityCondition(isAdmin: boolean, callerId?: string): Prisma.PostWhereInput {
+  if (isAdmin) return {};
+  return {
+    OR: [
+      { status: { not: PostStatus.PENDING } },
+      ...(callerId ? [{ status: PostStatus.PENDING, authorId: callerId }] : []),
+    ],
+  };
+}
+
 function buildListWhere(
   boardId: string,
   statusFilter: PostStatus[] | undefined,
   isAdmin: boolean,
   callerId?: string,
 ): Prisma.PostWhereInput {
-  const visibilityCondition: Prisma.PostWhereInput = isAdmin
-    ? {}
-    : {
-        OR: [
-          { status: { not: PostStatus.PENDING } },
-          ...(callerId ? [{ status: PostStatus.PENDING, authorId: callerId }] : []),
-        ],
-      };
+  const visibilityCondition = buildVisibilityCondition(isAdmin, callerId);
 
   const statusCondition: Prisma.PostWhereInput =
     statusFilter && statusFilter.length > 0 ? { status: { in: statusFilter } } : {};
@@ -393,6 +396,8 @@ export async function getSimilarPosts(boardId: string, title: string): Promise<S
   }));
 }
 
+// Pre-condition: callers must ensure boardId belongs to a public board for non-admin contexts,
+// or pass isAdmin: true. Board visibility is enforced at the tRPC layer via requireBoardVisible.
 export async function searchPosts(
   boardId: string,
   query: string,
@@ -401,17 +406,8 @@ export async function searchPosts(
   const { isAdmin = false, callerId, limit = 20 } = opts;
   const clampedLimit = Math.min(Math.max(1, limit), 50);
 
-  const visibilityWhere: Prisma.PostWhereInput = isAdmin
-    ? {}
-    : {
-        OR: [
-          { status: { not: PostStatus.PENDING } },
-          ...(callerId ? [{ status: PostStatus.PENDING, authorId: callerId }] : []),
-        ],
-      };
-
   const rows = await prisma.post.findMany({
-    where: { boardId, title: { contains: query, mode: "insensitive" }, AND: [visibilityWhere] },
+    where: { boardId, title: { contains: query, mode: "insensitive" }, AND: [buildVisibilityCondition(isAdmin, callerId)] },
     orderBy: [{ voteCount: "desc" }, { createdAt: "desc" }],
     take: clampedLimit,
     select: PUBLIC_SELECT,
@@ -552,7 +548,7 @@ export async function setPostStatus(
   return { ...result, previousStatus };
 }
 
-export interface PostNotificationContext {
+interface PostNotificationContext {
   postNumber: number;
   title: string;
   boardSlug: string;
@@ -651,8 +647,10 @@ export async function toggleVote(
 }
 
 // ---------------------------------------------------------------------------
-// Roadmap
+// Roadmap + My Posts
 // ---------------------------------------------------------------------------
+
+const BOARD_SLUG_NAME_SELECT = { select: { slug: true, name: true } } as const;
 
 const ROADMAP_STATUSES = [
   PostStatus.UNDER_REVIEW,
@@ -670,7 +668,7 @@ const ROADMAP_SELECT = {
   status: true,
   voteCount: true,
   createdAt: true,
-  board: { select: { slug: true, name: true } },
+  board: BOARD_SLUG_NAME_SELECT,
 } as const;
 
 type RoadmapRow = Prisma.PostGetPayload<{ select: typeof ROADMAP_SELECT }>;
@@ -685,7 +683,7 @@ const MY_POST_SELECT = {
   status: true,
   voteCount: true,
   createdAt: true,
-  board: { select: { slug: true, name: true } },
+  board: BOARD_SLUG_NAME_SELECT,
 } as const;
 
 type MyPostRow = Prisma.PostGetPayload<{ select: typeof MY_POST_SELECT }>;
@@ -714,13 +712,10 @@ export async function getPostsByAuthor(
         select: MY_POST_SELECT,
       }));
 
-  const hasNextPage = rows.length > clampedLimit;
-  const page = hasNextPage ? rows.slice(0, clampedLimit) : rows;
-  const last = page[page.length - 1];
-  const nextCursor = hasNextPage && last ? encodeCursor(last.createdAt, last.id) : null;
+  const { items, nextCursor } = sliceAndCursor(rows, clampedLimit, (r) => r.createdAt);
 
   return {
-    items: page.map((r) => ({
+    items: items.map((r) => ({
       id: r.id,
       postNumber: r.postNumber,
       title: r.title,

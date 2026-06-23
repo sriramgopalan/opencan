@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { CardLink } from "@/components/ui/CardLink";
 import { isEnabled } from "@/lib/flags";
 import { renderMarkdown } from "@/lib/markdown";
 import { getChangelogEntryBySlug } from "@/server/repositories/changelog";
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  if (!isEnabled("CHANGELOG")) return { title: "Not found — OpenCan" };
   const { slug } = await params;
   const entry = await getChangelogEntryBySlug(slug);
   if (!entry) return { title: "Not found — OpenCan" };
@@ -25,7 +27,7 @@ export default async function ChangelogEntryPage({ params }: Props) {
   const entry = await getChangelogEntryBySlug(slug);
   if (!entry) notFound();
 
-  const bodyHtml = await renderMarkdown(entry.body);
+  const bodyHtml = renderMarkdown(entry.body);
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
@@ -73,15 +75,11 @@ export default async function ChangelogEntryPage({ params }: Props) {
             <ul className="space-y-2" role="list">
               {entry.linkedPosts.map((post) => (
                 <li key={post.id}>
-                  <Link
+                  <CardLink
                     href={`/boards/${post.boardSlug}/posts/${post.postNumber}`}
-                    className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <span className="flex-1 font-medium text-gray-900">{post.title}</span>
-                    <span className="text-xs text-gray-400">
-                      {post.boardName} #{post.postNumber}
-                    </span>
-                  </Link>
+                    label={post.title}
+                    sublabel={`${post.boardName} #${post.postNumber}`}
+                  />
                 </li>
               ))}
             </ul>

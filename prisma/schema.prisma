@@ -40,6 +40,7 @@ model User {
   lockedUntil      DateTime?
   suspendedAt          DateTime? // PII: set by admin on suspension; null = active account
   notifyOnStatusChange Boolean   @default(true)
+  notifyOnChangelog    Boolean   @default(true) // PII: notification preference for changelog entries
   role                 Role      @default(MEMBER)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt

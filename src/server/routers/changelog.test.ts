@@ -234,8 +234,16 @@ describe("changelogRouter", () => {
       });
     });
 
+    it("throws CONFLICT when entry is already published", async () => {
+      prismaMock.changelogEntry.findUnique.mockResolvedValue({ id: ENTRY_ID, publishedAt: NOW } as never);
+      const caller = createCaller(createAdminContext(ADMIN_ID));
+      await expect(caller.update({ id: ENTRY_ID, title: "T" })).rejects.toMatchObject({
+        code: "CONFLICT",
+      });
+    });
+
     it("updates and returns id", async () => {
-      prismaMock.changelogEntry.findUnique.mockResolvedValue({ id: ENTRY_ID } as never);
+      prismaMock.changelogEntry.findUnique.mockResolvedValue({ id: ENTRY_ID, publishedAt: null } as never);
       prismaMock.$transaction.mockImplementation(
         ((fn: (tx: unknown) => Promise<unknown>) => fn(prismaMock)) as never,
       );
@@ -246,7 +254,7 @@ describe("changelogRouter", () => {
     });
 
     it("throws INTERNAL_SERVER_ERROR on unexpected db error", async () => {
-      prismaMock.changelogEntry.findUnique.mockResolvedValue({ id: ENTRY_ID } as never);
+      prismaMock.changelogEntry.findUnique.mockResolvedValue({ id: ENTRY_ID, publishedAt: null } as never);
       prismaMock.$transaction.mockRejectedValue(new Error("db down"));
       const caller = createCaller(createAdminContext(ADMIN_ID));
       await expect(caller.update({ id: ENTRY_ID, title: "T" })).rejects.toMatchObject({

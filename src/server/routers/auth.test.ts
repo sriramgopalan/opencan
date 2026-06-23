@@ -382,6 +382,24 @@ describe("authRouter", () => {
         caller.updateNotificationPreferences({ notifyOnStatusChange: "yes" }),
       ).rejects.toBeInstanceOf(TRPCError);
     });
+
+    it("updates notifyOnChangelog independently", async () => {
+      prismaMock.user.update.mockResolvedValue({} as never);
+      const caller = createCaller({ session: makeSession(), ip: "127.0.0.1" });
+      const result = await caller.updateNotificationPreferences({ notifyOnChangelog: false });
+      expect(result).toEqual({ notifyOnChangelog: false });
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: "user-1" },
+        data: { notifyOnChangelog: false },
+      });
+    });
+
+    it("rejects when neither preference is provided", async () => {
+      const caller = createCaller({ session: makeSession(), ip: "127.0.0.1" });
+      await expect(
+        caller.updateNotificationPreferences({}),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    });
   });
 
   describe("resendVerification", () => {

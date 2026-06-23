@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadMoreLink } from "@/components/ui/LoadMoreLink";
+import { AppError } from "@/lib/errors";
+import { isEnabled } from "@/lib/flags";
 import { listAllChangelogEntries } from "@/server/repositories/changelog";
 
 export const metadata: Metadata = { title: "Changelog — Admin" };
@@ -15,8 +20,17 @@ const STATUS_PILL = {
 };
 
 export default async function AdminChangelogPage({ searchParams }: Props) {
+  if (!isEnabled("CHANGELOG")) notFound();
+
   const { cursor } = await searchParams;
-  const { items, nextCursor } = await listAllChangelogEntries({ cursor, limit: 20 });
+  let items: Awaited<ReturnType<typeof listAllChangelogEntries>>["items"] = [];
+  let nextCursor: string | null = null;
+  try {
+    ({ items, nextCursor } = await listAllChangelogEntries({ cursor, limit: 20 }));
+  } catch (e) {
+    if (e instanceof AppError && e.code === "VALIDATION_ERROR") redirect("/admin/changelog");
+    throw e;
+  }
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
@@ -28,10 +42,7 @@ export default async function AdminChangelogPage({ searchParams }: Props) {
       </div>
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-center rounded-lg border border-dashed border-gray-200 bg-white py-16 text-center">
-          <p className="text-sm font-medium text-gray-900">No changelog entries yet</p>
-          <p className="mt-1 text-sm text-gray-500">Create your first entry via the API.</p>
-        </div>
+        <EmptyState title="No changelog entries yet" message="Create your first entry via the API." />
       ) : (
         <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
           <table className="w-full text-sm">
@@ -88,14 +99,7 @@ export default async function AdminChangelogPage({ searchParams }: Props) {
       )}
 
       {nextCursor && (
-        <div className="mt-6 text-center">
-          <Link
-            href={`/admin/changelog?cursor=${nextCursor}`}
-            className="inline-flex rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            Load more
-          </Link>
-        </div>
+        <LoadMoreLink href={`/admin/changelog?cursor=${nextCursor}`} />
       )}
     </main>
   );

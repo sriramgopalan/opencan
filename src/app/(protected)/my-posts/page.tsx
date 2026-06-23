@@ -1,10 +1,12 @@
 import { Inbox } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { MyPostCard } from "@/components/posts/MyPostCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadMoreLink } from "@/components/ui/LoadMoreLink";
+import { AppError } from "@/lib/errors";
 import { isEnabled } from "@/lib/flags";
 import { getPostsByAuthor } from "@/server/repositories/post";
 
@@ -25,7 +27,13 @@ export default async function MyPostsPage({ searchParams }: Props) {
   const userId = session?.user?.id;
   if (!userId) redirect("/auth/signin");
 
-  const result = await getPostsByAuthor(userId, { cursor, limit: 20 });
+  let result: Awaited<ReturnType<typeof getPostsByAuthor>>;
+  try {
+    result = await getPostsByAuthor(userId, { cursor, limit: 20 });
+  } catch (e) {
+    if (e instanceof AppError && e.code === "VALIDATION_ERROR") redirect("/my-posts");
+    throw e;
+  }
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
@@ -38,19 +46,12 @@ export default async function MyPostsPage({ searchParams }: Props) {
 
       <section aria-label="My posts">
         {result.items.length === 0 ? (
-          <div className="flex flex-col items-center rounded-lg border border-dashed border-gray-200 bg-white py-16 text-center">
-            <Inbox className="h-8 w-8 text-gray-300" aria-hidden="true" />
-            <p className="mt-3 text-sm font-medium text-gray-900">No posts yet</p>
-            <p className="mt-1 text-sm text-gray-500">
-              Share your feedback on a board.
-            </p>
-            <Link
-              href="/boards"
-              className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              Browse boards
-            </Link>
-          </div>
+          <EmptyState
+            icon={<Inbox className="h-8 w-8 text-gray-300" aria-hidden="true" />}
+            title="No posts yet"
+            message="Share your feedback on a board."
+            cta={{ href: "/boards", label: "Browse boards" }}
+          />
         ) : (
           <ul className="space-y-3" role="list">
             {result.items.map((post) => (
@@ -62,14 +63,7 @@ export default async function MyPostsPage({ searchParams }: Props) {
         )}
 
         {result.nextCursor && (
-          <div className="mt-6 text-center">
-            <Link
-              href={`/my-posts?cursor=${result.nextCursor}`}
-              className="inline-flex rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              Load more
-            </Link>
-          </div>
+          <LoadMoreLink href={`/my-posts?cursor=${result.nextCursor}`} />
         )}
       </section>
     </main>

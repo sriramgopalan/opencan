@@ -3,6 +3,15 @@ import { Resend } from "resend";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 let _resend: Resend | null = null;
 function getResend() {
   if (!_resend) _resend = new Resend(env.RESEND_API_KEY);
@@ -86,13 +95,14 @@ export async function sendStatusChangeEmail(
   postUrl: string,
   settingsUrl: string,
 ): Promise<void> {
+  const safeTitle = escapeHtml(postTitle);
   await sendEmail({
     to,
     subject: `Status update: ${postTitle}`,
     html: `
       <p>The status of your feedback post has been updated.</p>
-      <p><strong>${postTitle}</strong></p>
-      <p>${oldStatus} &rarr; ${newStatus}</p>
+      <p><strong>${safeTitle}</strong></p>
+      <p>${escapeHtml(oldStatus)} &rarr; ${escapeHtml(newStatus)}</p>
       <p><a href="${postUrl}">View post</a></p>
       <hr />
       <p style="font-size:0.85em;color:#888">
@@ -107,12 +117,13 @@ export async function sendChangelogNotification(
   entryTitle: string,
   entryUrl: string,
 ): Promise<void> {
+  const safeTitle = escapeHtml(entryTitle);
   await sendEmail({
     to,
     subject: `Changelog: ${entryTitle}`,
     html: `
       <p>An update has been posted to the changelog.</p>
-      <p><strong>${entryTitle}</strong></p>
+      <p><strong>${safeTitle}</strong></p>
       <p><a href="${entryUrl}">Read the full entry</a></p>
       <hr />
       <p style="font-size:0.85em;color:#888">

@@ -35,3 +35,12 @@ export interface ChangelogAdminItem {
   authorName: string | null;
   linkedPostCount: number;
 }
+
+export interface ChangelogEntryEditPayload {
+  id: string;
+  slug: string;
+  title: string;
+  body: string;
+  publishedAt: Date | null;
+  linkedPostIds: string[];
+}

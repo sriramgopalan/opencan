@@ -17,3 +17,14 @@ export function decodeCursor(cursor: string): string {
     throw new AppError("VALIDATION_ERROR", "Invalid pagination cursor.");
   }
 }
+
+export function sliceAndCursor<T extends { id: string }>(
+  rows: T[],
+  limit: number,
+  getDate: (item: T) => Date,
+): { items: T[]; nextCursor: string | null } {
+  const hasMore = rows.length > limit;
+  const items = hasMore ? rows.slice(0, limit) : rows;
+  const last = items[items.length - 1];
+  return { items, nextCursor: hasMore && last ? encodeCursor(getDate(last), last.id) : null };
+}

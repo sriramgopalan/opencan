@@ -194,6 +194,19 @@ export async function getNotificationPreference(userId: string): Promise<boolean
   return user?.notifyOnStatusChange ?? true;
 }
 
+export async function getNotificationPreferences(
+  userId: string,
+): Promise<{ notifyOnStatusChange: boolean; notifyOnChangelog: boolean }> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { notifyOnStatusChange: true, notifyOnChangelog: true },
+  });
+  return {
+    notifyOnStatusChange: user?.notifyOnStatusChange ?? true,
+    notifyOnChangelog: user?.notifyOnChangelog ?? true,
+  };
+}
+
 export async function setNotificationPreference(
   userId: string,
   value: boolean,
@@ -201,6 +214,16 @@ export async function setNotificationPreference(
   await prisma.user.update({
     where: { id: userId },
     data: { notifyOnStatusChange: value },
+  });
+}
+
+export async function setNotificationPreferences(
+  userId: string,
+  prefs: { notifyOnStatusChange?: boolean; notifyOnChangelog?: boolean },
+): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: prefs,
   });
 }
 

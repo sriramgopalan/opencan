@@ -91,7 +91,7 @@ async function sendPostStatusNotification(
   if (!ctx?.authorEmail) return;
   if (!ctx.notifyOnStatusChange) return;
   const baseUrl = env.AUTH_URL ?? "http://localhost:3000";
-  const postUrl = `${baseUrl}/boards/${ctx.boardSlug}/posts/${ctx.postNumber}`;
+  const postUrl = `${baseUrl}/boards/${encodeURIComponent(ctx.boardSlug)}/posts/${ctx.postNumber}`;
   const settingsUrl = `${baseUrl}/settings`;
   await sendStatusChangeEmail(ctx.authorEmail, ctx.title, previousStatus, newStatus, postUrl, settingsUrl);
 }
@@ -266,19 +266,12 @@ export const postRouter = createTRPCRouter({
             "IN_PROGRESS",
             "SHIPPED",
             "CLOSED",
-            "PENDING",
           ] as const),
         })
         .strict(),
     )
     .mutation(async ({ input, ctx }) => {
-      if (input.status === "PENDING") {
-        logger.warn({ postId: input.id, userId: ctx.session.user.id }, "posts.setStatus: attempted to set PENDING");
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          cause: new AppError("INVALID_STATUS_TRANSITION", "Posts cannot be manually set to PENDING status."),
-        });
-      }
+      await applyRateLimit(`posts:setStatus:${ctx.session.user.id}`, 100, 3600);
 
       const post = await setPostStatus(input.id, input.status as PostStatus);
       if (!post) {
@@ -298,7 +291,8 @@ export const postRouter = createTRPCRouter({
 
   setPin: adminProcedure
     .input(z.object({ id: z.string().cuid(), pinned: z.boolean() }).strict())
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await applyRateLimit(`posts:setPin:${ctx.session.user.id}`, 100, 3600);
       const post = await setPostPin(input.id, input.pinned);
       if (!post) {
         logger.info({ postId: input.id }, "posts.setPin: not found");

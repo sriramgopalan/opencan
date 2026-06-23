@@ -1,11 +1,12 @@
 import type { Prisma } from "@prisma/client";
 
 import { AppError } from "@/lib/errors";
-import { encodeCursor, decodeCursor } from "@/lib/pagination";
+import { decodeCursor, sliceAndCursor } from "@/lib/pagination";
 import { prisma } from "@/server/db";
 import type {
   ChangelogAdminItem,
   ChangelogEntryDetail,
+  ChangelogEntryEditPayload,
   ChangelogEntryListItem,
 } from "@/types/changelog";
 
@@ -85,6 +86,17 @@ function toAdminItem(row: AdminRow): ChangelogAdminItem {
 }
 
 // ---------------------------------------------------------------------------
+// Private pagination helper
+// ---------------------------------------------------------------------------
+
+function parsePage(cursor: string | undefined, limit: number | undefined, defaultLimit: number) {
+  return {
+    clampedLimit: Math.min(Math.max(1, limit ?? defaultLimit), 50),
+    cursorId: cursor ? decodeCursor(cursor) : undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Public reads
 // ---------------------------------------------------------------------------
 
@@ -92,8 +104,7 @@ export async function listChangelogEntries(opts: {
   cursor?: string;
   limit?: number;
 }): Promise<{ items: ChangelogEntryListItem[]; nextCursor: string | null }> {
-  const clampedLimit = Math.min(Math.max(1, opts.limit ?? 10), 50);
-  const cursorId = opts.cursor ? decodeCursor(opts.cursor) : undefined;
+  const { clampedLimit, cursorId } = parsePage(opts.cursor, opts.limit, 10);
 
   const rows = await prisma.changelogEntry.findMany({
     where: { publishedAt: { not: null } },
@@ -103,12 +114,7 @@ export async function listChangelogEntries(opts: {
     select: LIST_SELECT,
   });
 
-  const hasMore = rows.length > clampedLimit;
-  const items = hasMore ? rows.slice(0, clampedLimit) : rows;
-  const last = items[items.length - 1];
-  const nextCursor =
-    hasMore && last ? encodeCursor(last.publishedAt as Date, last.id) : null;
-
+  const { items, nextCursor } = sliceAndCursor(rows, clampedLimit, (r) => r.publishedAt as Date);
   return { items: items.map(toListItem), nextCursor };
 }
 
@@ -147,8 +153,7 @@ export async function listAllChangelogEntries(opts: {
   cursor?: string;
   limit?: number;
 }): Promise<{ items: ChangelogAdminItem[]; nextCursor: string | null }> {
-  const clampedLimit = Math.min(Math.max(1, opts.limit ?? 20), 50);
-  const cursorId = opts.cursor ? decodeCursor(opts.cursor) : undefined;
+  const { clampedLimit, cursorId } = parsePage(opts.cursor, opts.limit, 20);
 
   const rows = await prisma.changelogEntry.findMany({
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -157,18 +162,13 @@ export async function listAllChangelogEntries(opts: {
     select: ADMIN_SELECT,
   });
 
-  const hasMore = rows.length > clampedLimit;
-  const items = hasMore ? rows.slice(0, clampedLimit) : rows;
-  const last = items[items.length - 1];
-  const nextCursor =
-    hasMore && last ? encodeCursor(last.createdAt, last.id) : null;
-
+  const { items, nextCursor } = sliceAndCursor(rows, clampedLimit, (r) => r.createdAt);
   return { items: items.map(toAdminItem), nextCursor };
 }
 
 export async function getChangelogEntryById(
   id: string,
-): Promise<{ id: string; slug: string; title: string; body: string; publishedAt: Date | null; linkedPostIds: string[] } | null> {
+): Promise<ChangelogEntryEditPayload | null> {
   const row = await prisma.changelogEntry.findUnique({
     where: { id },
     select: {
@@ -219,8 +219,9 @@ export async function updateChangelogEntry(
   id: string,
   data: { title?: string; body?: string; linkedPostIds?: string[] },
 ): Promise<{ id: string }> {
-  const existing = await prisma.changelogEntry.findUnique({ where: { id }, select: { id: true } });
+  const existing = await prisma.changelogEntry.findUnique({ where: { id }, select: { id: true, publishedAt: true } });
   if (!existing) throw new AppError("NOT_FOUND", "Changelog entry not found.");
+  if (existing.publishedAt !== null) throw new AppError("CONFLICT", "Published entries cannot be edited.");
 
   await prisma.$transaction(async (tx) => {
     if (data.title !== undefined || data.body !== undefined) {
@@ -284,7 +285,7 @@ export async function getVoterEmailsForPosts(postIds: string[]): Promise<string[
     where: {
       postId: { in: postIds },
       userId: { not: null },
-      user: { notifyOnStatusChange: true },
+      user: { notifyOnChangelog: true },
     },
     select: { user: { select: { email: true } } },
   });

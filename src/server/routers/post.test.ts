@@ -444,9 +444,10 @@ describe("postRouter", () => {
       ).rejects.toMatchObject({ code: "FORBIDDEN" });
     });
 
-    it("cannot set status to PENDING", async () => {
+    it("rejects unknown status values via Zod schema", async () => {
       const caller = createCaller(createAdminContext(ADMIN_ID));
       await expect(
+        // @ts-expect-error — testing schema-level rejection of disallowed status
         caller.setStatus({ id: POST_ID, status: "PENDING" }),
       ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     });

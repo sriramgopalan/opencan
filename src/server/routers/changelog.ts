@@ -80,7 +80,7 @@ export const changelogRouter = createTRPCRouter({
   }),
 
   get: publicProcedure
-    .input(z.object({ slug: z.string() }).strict())
+    .input(z.object({ slug: slugSchema }).strict())
     .query(async ({ input }) => {
       if (!isEnabled("CHANGELOG")) {
         throw new TRPCError({
@@ -141,8 +141,9 @@ export const changelogRouter = createTRPCRouter({
     try {
       return await updateChangelogEntry(id, data);
     } catch (e) {
-      if (e instanceof AppError && e.code === "NOT_FOUND") {
-        throw new TRPCError({ code: "NOT_FOUND", cause: e });
+      if (e instanceof AppError) {
+        if (e.code === "NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", cause: e });
+        if (e.code === "CONFLICT") throw new TRPCError({ code: "CONFLICT", cause: e });
       }
       logger.error({ err: e, entryId: id }, "changelog.update: db error");
       throw new TRPCError({

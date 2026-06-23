@@ -1,9 +1,11 @@
 import { Rss } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { ChangelogCard } from "@/components/changelog/ChangelogCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadMoreLink } from "@/components/ui/LoadMoreLink";
+import { AppError } from "@/lib/errors";
 import { isEnabled } from "@/lib/flags";
 import { listChangelogEntries } from "@/server/repositories/changelog";
 
@@ -17,7 +19,14 @@ export default async function ChangelogIndexPage({ searchParams }: Props) {
   if (!isEnabled("CHANGELOG")) notFound();
 
   const { cursor } = await searchParams;
-  const { items, nextCursor } = await listChangelogEntries({ cursor, limit: 10 });
+  let items: Awaited<ReturnType<typeof listChangelogEntries>>["items"] = [];
+  let nextCursor: string | null = null;
+  try {
+    ({ items, nextCursor } = await listChangelogEntries({ cursor, limit: 10 }));
+  } catch (e) {
+    if (e instanceof AppError && e.code === "VALIDATION_ERROR") redirect("/changelog");
+    throw e;
+  }
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
@@ -30,10 +39,7 @@ export default async function ChangelogIndexPage({ searchParams }: Props) {
       </header>
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-center rounded-lg border border-dashed border-gray-200 bg-white py-16 text-center">
-          <p className="text-sm font-medium text-gray-900">No entries yet</p>
-          <p className="mt-1 text-sm text-gray-500">Check back soon for updates.</p>
-        </div>
+        <EmptyState title="No entries yet" message="Check back soon for updates." />
       ) : (
         <ul className="space-y-4" role="list">
           {items.map((entry) => (
@@ -45,14 +51,7 @@ export default async function ChangelogIndexPage({ searchParams }: Props) {
       )}
 
       {nextCursor && (
-        <div className="mt-8 text-center">
-          <Link
-            href={`/changelog?cursor=${nextCursor}`}
-            className="inline-flex rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            Load more
-          </Link>
-        </div>
+        <LoadMoreLink href={`/changelog?cursor=${nextCursor}`} className="mt-8 text-center" />
       )}
     </main>
   );
