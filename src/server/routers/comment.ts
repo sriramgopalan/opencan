@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { stripHtml } from "@/lib/sanitize";
+import { dispatchWebhook } from "@/lib/webhook";
 import {
   createComment,
   deleteComment,
@@ -125,6 +126,14 @@ export const commentRouter = createTRPCRouter({
         guestName: viewer.callerId ? null : (input.guestName ?? null),
         body: input.body,
       });
+      dispatchWebhook("comment.created", {
+        id: created.id,
+        postId: created.postId,
+        authorId: created.authorId ?? null,
+        body: created.body,
+        createdAt: created.createdAt,
+      }).catch((err: unknown) => logger.error({ err, commentId: created.id }, "webhook dispatch failed"));
+
       if (!viewer.isAdmin) {
         const { id, postId, guestName, body, createdAt, updatedAt } = created;
         return { id, postId, guestName, body, createdAt, updatedAt };

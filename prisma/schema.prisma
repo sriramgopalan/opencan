@@ -231,3 +231,14 @@ model Vote {
   @@index([postId])
   @@index([userId])
 }
+
+model Webhook {
+  id        String   @id @default(cuid())
+  url       String   @db.VarChar(500) // PII: may contain auth tokens; never logged in full
+  secret    String                     // PII: HMAC signing key; returned to client only at creation time
+  events    String[]                   // e.g. ["post.created","post.status_changed","comment.created"]
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([isActive])
+}

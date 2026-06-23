@@ -36,6 +36,12 @@ const flags = {
     owner: "sriramgopalan",
     trackingIssue: "gap-5-changelog",
   },
+  WEBHOOKS: {
+    description: "Outbound webhook delivery of post and comment events to registered HTTP endpoints",
+    defaultValue: true,
+    owner: "sriramgopalan",
+    trackingIssue: "gap-6-webhooks",
+  },
 } as const satisfies Record<string, FlagDefinition>;
 
 type FeatureFlag = keyof typeof flags;

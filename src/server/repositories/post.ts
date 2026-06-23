@@ -533,11 +533,11 @@ export async function getPostAuthorId(postId: string): Promise<string | null> {
 export async function setPostStatus(
   id: string,
   status: PostStatus,
-): Promise<{ id: string; previousStatus: PostStatus; status: PostStatus; updatedAt: Date } | null> {
+): Promise<{ id: string; postNumber: number; boardId: string; title: string; previousStatus: PostStatus; status: PostStatus; updatedAt: Date } | null> {
   const existing = await prisma.post.findUnique({ where: { id }, select: { status: true } });
   if (!existing) return null;
   const previousStatus = existing.status;
-  const select = { id: true, status: true, updatedAt: true } as const;
+  const select = { id: true, postNumber: true, boardId: true, title: true, status: true, updatedAt: true } as const;
   const result = await applyIdempotentUpdate(
     existing.status,
     status,

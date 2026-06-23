@@ -14,6 +14,8 @@ const schema = z
     REDIS_URL: z.string().min(1),
     // Random 32-byte hex string for HMAC IP hashing. Generate: openssl rand -hex 32
     IP_HASH_SECRET: z.string().default("opencan-default-salt"),
+    // Maximum number of registered webhooks per instance (default 10)
+    WEBHOOK_MAX: z.coerce.number().int().min(1).max(100).default(10),
     LOG_LEVEL: z
       .enum(["fatal", "error", "warn", "info", "debug", "trace"])
       .default("info"),

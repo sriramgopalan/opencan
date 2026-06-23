@@ -4,6 +4,7 @@ import { boardRouter } from "@/server/routers/board";
 import { changelogRouter } from "@/server/routers/changelog";
 import { commentRouter } from "@/server/routers/comment";
 import { postRouter } from "@/server/routers/post";
+import { webhookRouter } from "@/server/routers/webhook";
 import { createTRPCRouter } from "@/server/trpc";
 
 export const appRouter = createTRPCRouter({
@@ -13,6 +14,7 @@ export const appRouter = createTRPCRouter({
   changelog: changelogRouter,
   posts: postRouter,
   comments: commentRouter,
+  webhooks: webhookRouter,
 });
 
 export type AppRouter = typeof appRouter;

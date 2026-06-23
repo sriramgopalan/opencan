@@ -8,6 +8,7 @@ import { AppError } from "@/lib/errors";
 import { isEnabled } from "@/lib/flags";
 import { logger } from "@/lib/logger";
 import { stripHtml } from "@/lib/sanitize";
+import { dispatchWebhook } from "@/lib/webhook";
 import {
   createPost,
   deletePost,
@@ -121,6 +122,15 @@ export const postRouter = createTRPCRouter({
         description: input.description ? stripHtml(input.description) : null,
         initialStatus,
       });
+      dispatchWebhook("post.created", {
+        id: result.id,
+        postNumber: result.postNumber,
+        boardId: result.boardId,
+        title: result.title,
+        status: result.status,
+        authorId: result.authorId,
+        createdAt: result.createdAt,
+      }).catch((err: unknown) => logger.error({ err, postId: result.id }, "webhook dispatch failed"));
       return result;
     } catch (e) {
       if (e instanceof AppError) {
@@ -285,6 +295,16 @@ export const postRouter = createTRPCRouter({
         sendPostStatusNotification(input.id, post.previousStatus, post.status).catch(
           (err: unknown) => logger.error({ err, postId: input.id }, "status notification failed"),
         );
+      }
+      if (post.status !== post.previousStatus) {
+        dispatchWebhook("post.status_changed", {
+          id: post.id,
+          postNumber: post.postNumber,
+          boardId: post.boardId,
+          title: post.title,
+          previousStatus: post.previousStatus,
+          status: post.status,
+        }).catch((err: unknown) => logger.error({ err, postId: input.id }, "webhook dispatch failed"));
       }
       return post;
     }),
