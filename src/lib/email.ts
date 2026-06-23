@@ -102,6 +102,27 @@ export async function sendStatusChangeEmail(
   });
 }
 
+export async function sendChangelogNotification(
+  to: string,
+  entryTitle: string,
+  entryUrl: string,
+): Promise<void> {
+  await sendEmail({
+    to,
+    subject: `Changelog: ${entryTitle}`,
+    html: `
+      <p>An update has been posted to the changelog.</p>
+      <p><strong>${entryTitle}</strong></p>
+      <p><a href="${entryUrl}">Read the full entry</a></p>
+      <hr />
+      <p style="font-size:0.85em;color:#888">
+        You are receiving this because you voted on a post linked to this entry.
+        <a href="${entryUrl.split("/changelog")[0]}/settings">Manage notification preferences</a>
+      </p>
+    `,
+  });
+}
+
 export async function sendAccountDeletedEmail(to: string): Promise<void> {
   await sendEmail({
     to,

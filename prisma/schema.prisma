@@ -44,13 +44,14 @@ model User {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  accounts    Account[]
-  sessions    Session[]
-  memberships OrganizationMember[]
-  boards      Board[]
-  posts       Post[]
-  votes       Vote[]
-  comments    Comment[]
+  accounts         Account[]
+  sessions         Session[]
+  memberships      OrganizationMember[]
+  boards           Board[]
+  posts            Post[]
+  votes            Vote[]
+  comments         Comment[]
+  changelogEntries ChangelogEntry[]
 
   @@index([email])
   @@index([lockedUntil])
@@ -159,10 +160,11 @@ model Post {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  board    Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  author   User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  votes    Vote[]
-  comments Comment[]
+  board           Board               @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  author          User?               @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  votes           Vote[]
+  comments        Comment[]
+  changelogLinks  ChangelogEntryPost[]
 
   @@unique([boardId, postNumber])
   @@index([boardId, status])
@@ -189,6 +191,30 @@ model Comment {
 
   @@index([postId, createdAt])
   @@index([authorId])
+}
+
+model ChangelogEntry {
+  id          String               @id @default(cuid())
+  slug        String               @unique
+  title       String               @db.VarChar(200)
+  body        String               @db.Text // Markdown; sanitised on render
+  authorId    String
+  author      User                 @relation(fields: [authorId], references: [id])
+  publishedAt DateTime?            // null = draft
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  linkedPosts ChangelogEntryPost[]
+
+  @@index([publishedAt])
+}
+
+model ChangelogEntryPost {
+  entryId String
+  postId  String
+  entry   ChangelogEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  post    Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([entryId, postId])
 }
 
 model Vote {

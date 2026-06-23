@@ -30,6 +30,12 @@ const flags = {
     owner: "sriramgopalan",
     trackingIssue: "gap-4-post-search",
   },
+  CHANGELOG: {
+    description: "Public /changelog page with admin-authored dated entries and voter notification fan-out on publish",
+    defaultValue: true,
+    owner: "sriramgopalan",
+    trackingIssue: "gap-5-changelog",
+  },
 } as const satisfies Record<string, FlagDefinition>;
 
 type FeatureFlag = keyof typeof flags;

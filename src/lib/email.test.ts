@@ -5,6 +5,7 @@ import { server } from "@/tests/msw/server";
 
 import {
   sendAccountDeletedEmail,
+  sendChangelogNotification,
   sendMagicLinkEmail,
   sendPasswordChangedEmail,
   sendVerificationEmail,
@@ -79,6 +80,25 @@ describe("email", () => {
     await sendAccountDeletedEmail("user@example.com");
     const body = captured as { html: string };
     expect(body.html).toContain("permanently deleted");
+  });
+
+  it("sendChangelogNotification includes entry title and URL", async () => {
+    let captured: unknown;
+    server.use(
+      http.post("https://api.resend.com/emails", async ({ request }) => {
+        captured = await request.json();
+        return HttpResponse.json({ id: "test-id" });
+      }),
+    );
+
+    await sendChangelogNotification(
+      "voter@example.com",
+      "Big Release v3",
+      "https://example.com/changelog/big-release-v3",
+    );
+    const body = captured as { subject: string; html: string };
+    expect(body.subject).toContain("Big Release v3");
+    expect(body.html).toContain("https://example.com/changelog/big-release-v3");
   });
 
   it("throws when Resend returns an error", async () => {
