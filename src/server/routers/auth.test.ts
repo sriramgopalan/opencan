@@ -27,6 +27,7 @@ vi.mock("@/lib/email", () => ({
   sendMagicLinkEmail: vi.fn().mockResolvedValue(undefined),
   sendPasswordChangedEmail: vi.fn().mockResolvedValue(undefined),
   sendAccountDeletedEmail: vi.fn().mockResolvedValue(undefined),
+  sendStatusChangeEmail: vi.fn().mockResolvedValue(undefined),
   sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -337,6 +338,49 @@ describe("authRouter", () => {
       expect(result).toEqual({ success: true });
       await new Promise((r) => setTimeout(r, 0));
       expect(vi.mocked(sendAccountDeletedEmail)).toHaveBeenCalledWith("");
+    });
+  });
+
+  describe("updateNotificationPreferences", () => {
+    it("updates preference and returns new value", async () => {
+      prismaMock.user.update.mockResolvedValue({} as never);
+
+      const caller = createCaller({ session: makeSession(), ip: "127.0.0.1" });
+      const result = await caller.updateNotificationPreferences({
+        notifyOnStatusChange: false,
+      });
+
+      expect(result).toEqual({ notifyOnStatusChange: false });
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: "user-1" },
+        data: { notifyOnStatusChange: false },
+      });
+    });
+
+    it("accepts true to re-enable notifications", async () => {
+      prismaMock.user.update.mockResolvedValue({} as never);
+
+      const caller = createCaller({ session: makeSession(), ip: "127.0.0.1" });
+      const result = await caller.updateNotificationPreferences({
+        notifyOnStatusChange: true,
+      });
+
+      expect(result).toEqual({ notifyOnStatusChange: true });
+    });
+
+    it("rejects unauthenticated calls", async () => {
+      const caller = createCaller({ session: null, ip: "127.0.0.1" });
+      await expect(
+        caller.updateNotificationPreferences({ notifyOnStatusChange: false }),
+      ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    });
+
+    it("rejects non-boolean input", async () => {
+      const caller = createCaller({ session: makeSession(), ip: "127.0.0.1" });
+      await expect(
+        // @ts-expect-error testing invalid input
+        caller.updateNotificationPreferences({ notifyOnStatusChange: "yes" }),
+      ).rejects.toBeInstanceOf(TRPCError);
     });
   });
 

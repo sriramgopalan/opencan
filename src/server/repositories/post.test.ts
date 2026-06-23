@@ -21,6 +21,8 @@ const redisMock = redis as unknown as {
 const {
   createPost,
   deletePost,
+  getPostAuthorForNotification,
+  getPostAuthorId,
   getPostById,
   getPostByNumber,
   getRoadmapPosts,
@@ -411,6 +413,7 @@ describe("post repository", () => {
       const result = await setPostStatus(POST_ID, PostStatus.OPEN);
       expect(prismaMock.post.update).not.toHaveBeenCalled();
       expect(result?.status).toBe(PostStatus.OPEN);
+      expect(result?.previousStatus).toBe(PostStatus.OPEN);
     });
 
     it("updates status when it changes", async () => {
@@ -422,6 +425,7 @@ describe("post repository", () => {
       } as never);
       const result = await setPostStatus(POST_ID, PostStatus.PLANNED);
       expect(result?.status).toBe(PostStatus.PLANNED);
+      expect(result?.previousStatus).toBe(PostStatus.OPEN);
     });
   });
 
@@ -785,6 +789,71 @@ describe("post repository", () => {
 
       expect(result[0]?.id).toBe("post-a");
       expect(result[1]?.id).toBe("post-b");
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // getPostAuthorId
+  // ---------------------------------------------------------------------------
+
+  describe("getPostAuthorId", () => {
+    it("returns authorId when post exists", async () => {
+      prismaMock.post.findUnique.mockResolvedValue({ authorId: USER_ID } as never);
+      expect(await getPostAuthorId(POST_ID)).toBe(USER_ID);
+    });
+
+    it("returns null when post does not exist", async () => {
+      prismaMock.post.findUnique.mockResolvedValue(null);
+      expect(await getPostAuthorId("missing")).toBeNull();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // getPostAuthorForNotification
+  // ---------------------------------------------------------------------------
+
+  describe("getPostAuthorForNotification", () => {
+    it("returns null when post not found", async () => {
+      prismaMock.post.findUnique.mockResolvedValue(null);
+      expect(await getPostAuthorForNotification("missing")).toBeNull();
+    });
+
+    it("returns authorEmail=null for guest posts (no author)", async () => {
+      prismaMock.post.findUnique.mockResolvedValue({
+        postNumber: 1,
+        title: "Guest post",
+        board: { slug: "feedback" },
+        author: null,
+      } as never);
+      const result = await getPostAuthorForNotification(POST_ID);
+      expect(result?.authorEmail).toBeNull();
+      expect(result?.notifyOnStatusChange).toBe(false);
+    });
+
+    it("returns author email and preference for authenticated author", async () => {
+      prismaMock.post.findUnique.mockResolvedValue({
+        postNumber: 7,
+        title: "My feature request",
+        board: { slug: "ideas" },
+        author: { email: "author@example.com", notifyOnStatusChange: true },
+      } as never);
+      const result = await getPostAuthorForNotification(POST_ID);
+      expect(result?.authorEmail).toBe("author@example.com");
+      expect(result?.notifyOnStatusChange).toBe(true);
+      expect(result?.boardSlug).toBe("ideas");
+      expect(result?.postNumber).toBe(7);
+      expect(result?.title).toBe("My feature request");
+    });
+
+    it("returns notifyOnStatusChange=false when author has opted out", async () => {
+      prismaMock.post.findUnique.mockResolvedValue({
+        postNumber: 3,
+        title: "Another post",
+        board: { slug: "bugs" },
+        author: { email: "quiet@example.com", notifyOnStatusChange: false },
+      } as never);
+      const result = await getPostAuthorForNotification(POST_ID);
+      expect(result?.notifyOnStatusChange).toBe(false);
     });
   });
 });

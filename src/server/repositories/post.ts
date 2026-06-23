@@ -498,16 +498,49 @@ export async function getPostAuthorId(postId: string): Promise<string | null> {
 export async function setPostStatus(
   id: string,
   status: PostStatus,
-): Promise<{ id: string; status: PostStatus; updatedAt: Date } | null> {
+): Promise<{ id: string; previousStatus: PostStatus; status: PostStatus; updatedAt: Date } | null> {
   const existing = await prisma.post.findUnique({ where: { id }, select: { status: true } });
   if (!existing) return null;
+  const previousStatus = existing.status;
   const select = { id: true, status: true, updatedAt: true } as const;
-  return applyIdempotentUpdate(
+  const result = await applyIdempotentUpdate(
     existing.status,
     status,
     () => prisma.post.findUnique({ where: { id }, select }),
     () => prisma.post.update({ where: { id }, data: { status }, select }),
   );
+  if (!result) return null;
+  return { ...result, previousStatus };
+}
+
+export interface PostNotificationContext {
+  postNumber: number;
+  title: string;
+  boardSlug: string;
+  authorEmail: string | null;
+  notifyOnStatusChange: boolean;
+}
+
+export async function getPostAuthorForNotification(
+  postId: string,
+): Promise<PostNotificationContext | null> {
+  const row = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      postNumber: true,
+      title: true,
+      board: { select: { slug: true } },
+      author: { select: { email: true, notifyOnStatusChange: true } },
+    },
+  });
+  if (!row) return null;
+  return {
+    postNumber: row.postNumber,
+    title: row.title,
+    boardSlug: row.board.slug,
+    authorEmail: row.author?.email ?? null,
+    notifyOnStatusChange: row.author?.notifyOnStatusChange ?? false,
+  };
 }
 
 export async function setPostPin(

@@ -186,6 +186,24 @@ export async function deleteUserAccount(userId: string, email: string): Promise<
 // then hard-deletes the user row (cascades sessions, accounts, org memberships).
 // NOTE: fails at the DB level if the user owns boards (Board.onDelete = Restrict).
 // The caller must blocklist the user before invoking this function.
+export async function getNotificationPreference(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { notifyOnStatusChange: true },
+  });
+  return user?.notifyOnStatusChange ?? true;
+}
+
+export async function setNotificationPreference(
+  userId: string,
+  value: boolean,
+): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { notifyOnStatusChange: value },
+  });
+}
+
 export async function adminDeleteUser(userId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const current = await tx.user.findUnique({

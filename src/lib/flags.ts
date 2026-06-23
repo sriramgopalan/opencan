@@ -12,6 +12,12 @@ const flags = {
     owner: "sriramgopalan",
     trackingIssue: "gap-1-roadmap",
   },
+  STATUS_NOTIFICATIONS: {
+    description: "Email the post author when an admin changes its status",
+    defaultValue: true,
+    owner: "sriramgopalan",
+    trackingIssue: "gap-2-notifications",
+  },
 } as const satisfies Record<string, FlagDefinition>;
 
 type FeatureFlag = keyof typeof flags;

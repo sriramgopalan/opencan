@@ -2,12 +2,16 @@ import { PostStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { sendStatusChangeEmail } from "@/lib/email";
+import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
+import { isEnabled } from "@/lib/flags";
 import { logger } from "@/lib/logger";
 import { stripHtml } from "@/lib/sanitize";
 import {
   createPost,
   deletePost,
+  getPostAuthorForNotification,
   getSimilarPosts,
   getPostById,
   listPosts,
@@ -73,6 +77,24 @@ const GetSimilarInput = z
     title: z.string().trim().min(1).max(150),
   })
   .strict();
+
+// ---------------------------------------------------------------------------
+// Notification helper
+// ---------------------------------------------------------------------------
+
+async function sendPostStatusNotification(
+  postId: string,
+  previousStatus: string,
+  newStatus: string,
+): Promise<void> {
+  const ctx = await getPostAuthorForNotification(postId);
+  if (!ctx?.authorEmail) return;
+  if (!ctx.notifyOnStatusChange) return;
+  const baseUrl = env.AUTH_URL ?? "http://localhost:3000";
+  const postUrl = `${baseUrl}/boards/${ctx.boardSlug}/posts/${ctx.postNumber}`;
+  const settingsUrl = `${baseUrl}/settings`;
+  await sendStatusChangeEmail(ctx.authorEmail, ctx.title, previousStatus, newStatus, postUrl, settingsUrl);
+}
 
 // ---------------------------------------------------------------------------
 // Router
@@ -265,6 +287,11 @@ export const postRouter = createTRPCRouter({
           code: "NOT_FOUND",
           cause: new AppError("NOT_FOUND", "Post not found."),
         });
+      }
+      if (isEnabled("STATUS_NOTIFICATIONS") && post.status !== post.previousStatus) {
+        sendPostStatusNotification(input.id, post.previousStatus, post.status).catch(
+          (err: unknown) => logger.error({ err, postId: input.id }, "status notification failed"),
+        );
       }
       return post;
     }),

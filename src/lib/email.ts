@@ -78,6 +78,30 @@ export async function sendPasswordChangedEmail(to: string): Promise<void> {
   });
 }
 
+export async function sendStatusChangeEmail(
+  to: string,
+  postTitle: string,
+  oldStatus: string,
+  newStatus: string,
+  postUrl: string,
+  settingsUrl: string,
+): Promise<void> {
+  await sendEmail({
+    to,
+    subject: `Status update: ${postTitle}`,
+    html: `
+      <p>The status of your feedback post has been updated.</p>
+      <p><strong>${postTitle}</strong></p>
+      <p>${oldStatus} &rarr; ${newStatus}</p>
+      <p><a href="${postUrl}">View post</a></p>
+      <hr />
+      <p style="font-size:0.85em;color:#888">
+        <a href="${settingsUrl}">Manage notification preferences</a>
+      </p>
+    `,
+  });
+}
+
 export async function sendAccountDeletedEmail(to: string): Promise<void> {
   await sendEmail({
     to,

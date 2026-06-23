@@ -18,9 +18,11 @@ const {
   resetFailedLoginCount,
   anonymiseUser,
   getProviderForEmail,
+  getNotificationPreference,
   getSuspendedAt,
   getUserRoleAndStatus,
   adminDeleteUser,
+  setNotificationPreference,
   setUserRole,
   suspendUser,
   unsuspendUser,
@@ -240,6 +242,43 @@ describe("user repository", () => {
           data: expect.objectContaining({ email: expect.stringMatching(/^deleted-/) }),
         }),
       );
+    });
+  });
+
+  describe("getNotificationPreference", () => {
+    it("returns true when user has notifyOnStatusChange=true", async () => {
+      prismaMock.user.findUnique.mockResolvedValue({ notifyOnStatusChange: true } as never);
+      expect(await getNotificationPreference("user-1")).toBe(true);
+    });
+
+    it("returns false when user has notifyOnStatusChange=false", async () => {
+      prismaMock.user.findUnique.mockResolvedValue({ notifyOnStatusChange: false } as never);
+      expect(await getNotificationPreference("user-1")).toBe(false);
+    });
+
+    it("returns true when user not found (safe default)", async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+      expect(await getNotificationPreference("missing")).toBe(true);
+    });
+  });
+
+  describe("setNotificationPreference", () => {
+    it("calls user.update with the given value", async () => {
+      prismaMock.user.update.mockResolvedValue({} as never);
+      await setNotificationPreference("user-1", false);
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: "user-1" },
+        data: { notifyOnStatusChange: false },
+      });
+    });
+
+    it("accepts true to re-enable notifications", async () => {
+      prismaMock.user.update.mockResolvedValue({} as never);
+      await setNotificationPreference("user-1", true);
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: "user-1" },
+        data: { notifyOnStatusChange: true },
+      });
     });
   });
 

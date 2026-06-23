@@ -22,6 +22,7 @@ import {
   incrementFailedLoginCount,
   lockAccount,
   resetFailedLoginCount,
+  setNotificationPreference,
   updatePasswordHash,
 } from "@/server/repositories/user";
 import {
@@ -160,6 +161,16 @@ export const authRouter = createTRPCRouter({
       });
 
       return { success: true as const };
+    }),
+
+  updateNotificationPreferences: protectedProcedure
+    .input(z.object({ notifyOnStatusChange: z.boolean() }).strict())
+    .output(z.object({ notifyOnStatusChange: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.session.user.id;
+      await setNotificationPreference(userId, input.notifyOnStatusChange);
+      logger.info({ userId }, "notification preferences updated");
+      return { notifyOnStatusChange: input.notifyOnStatusChange };
     }),
 
   resendVerification: protectedProcedure

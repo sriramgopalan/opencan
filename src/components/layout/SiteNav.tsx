@@ -54,6 +54,12 @@ export async function SiteNav() {
 
         {email ? (
           <div className="flex items-center gap-3">
+            <Link
+              href="/settings"
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Settings
+            </Link>
             <span className="hidden text-sm text-gray-500 sm:inline">{email}</span>
             <SignOutButton />
           </div>
