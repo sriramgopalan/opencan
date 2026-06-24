@@ -1,5 +1,7 @@
 import { jwtVerify } from "jose";
 
+import { stripHtml } from "@/lib/sanitize";
+
 const CLOCK_SKEW_SECONDS = 60;
 const MAX_TOKEN_WINDOW_SECONDS = 300;
 
@@ -7,10 +9,6 @@ export interface WidgetClaims {
   sub: string;
   email: string;
   name: string | null;
-}
-
-function stripHtml(input: string): string {
-  return input.replace(/<[^>]+>/g, "").trim().slice(0, 512);
 }
 
 export async function verifyWidgetToken(

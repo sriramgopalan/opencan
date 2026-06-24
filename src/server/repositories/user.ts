@@ -227,10 +227,7 @@ export async function setNotificationPreferences(
   });
 }
 
-export async function upsertWidgetUser(
-  email: string,
-  name: string | null,
-): Promise<SafeUser & { role: string }> {
+export async function upsertWidgetUser(email: string, name: string | null): Promise<SafeUser> {
   return prisma.user.upsert({
     where: { email },
     update: {},
@@ -239,7 +236,7 @@ export async function upsertWidgetUser(
       name,
       emailVerified: new Date(),
     },
-    select: { ...SAFE_USER_SELECT, role: true },
+    select: SAFE_USER_SELECT,
   });
 }
 

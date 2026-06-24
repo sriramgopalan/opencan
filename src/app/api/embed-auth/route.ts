@@ -2,17 +2,18 @@ import { encode } from "@auth/core/jwt";
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { SESSION_MAX_AGE_SECONDS } from "@/lib/constants";
+import { AUTH_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from "@/lib/constants";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { verifyWidgetToken } from "@/lib/widget-auth";
 import { upsertWidgetUser } from "@/server/repositories/user";
 
-const COOKIE_NAME =
-  env.NODE_ENV === "production" ? "__Secure-authjs.session-token" : "authjs.session-token";
-
 function isValidNextPath(value: string | null): value is string {
-  return typeof value === "string" && value.startsWith("/embed/");
+  if (typeof value !== "string") return false;
+  if (!value.startsWith("/embed/")) return false;
+  // Resolve the path to block traversal (e.g. /embed/../admin → /admin).
+  const resolved = new URL(value, "https://x").pathname;
+  return resolved.startsWith("/embed/");
 }
 
 export async function GET(request: Request) {
@@ -47,21 +48,23 @@ export async function GET(request: Request) {
   try {
     const user = await upsertWidgetUser(claims.email, claims.name);
 
+    // Widget auto-login always grants MEMBER role regardless of the existing DB role.
+    // This prevents a host operator from using a known admin email to escalate privileges.
     const sessionToken = await encode({
       token: {
         sub: user.id,
         id: user.id,
-        role: user.role,
+        role: "MEMBER",
         email: user.email,
         name: user.name ?? null,
       },
       secret: env.AUTH_SECRET,
       maxAge: SESSION_MAX_AGE_SECONDS,
-      salt: COOKIE_NAME,
+      salt: AUTH_COOKIE_NAME,
     });
 
     const response = NextResponse.redirect(redirectUrl);
-    response.cookies.set(COOKIE_NAME, sessionToken, {
+    response.cookies.set(AUTH_COOKIE_NAME, sessionToken, {
       httpOnly: true,
       sameSite: "lax",
       secure: env.NODE_ENV === "production",

@@ -21,7 +21,6 @@ vi.mock("@/server/repositories/user", () => ({
     id: "user-1",
     email: "alice@example.com",
     name: "Alice",
-    role: "MEMBER",
     image: null,
     emailVerified: null,
     createdAt: new Date(),
@@ -34,6 +33,7 @@ vi.mock("@/lib/logger", () => ({
 const { GET } = await import("@/app/api/embed-auth/route");
 const { auth } = await import("@/auth");
 const { upsertWidgetUser } = await import("@/server/repositories/user");
+const { encode } = await import("@auth/core/jwt");
 // jscpd:ignore-end
 
 const WIDGET_SECRET = "widget-secret-for-tests-at-least-32-bytes!"; // gitleaks:allow
@@ -73,6 +73,11 @@ describe("GET /api/embed-auth", () => {
     expect(res.status).toBe(400);
   });
 
+  it("returns 400 for path traversal in next param", async () => {
+    const res = await GET(makeRequest({ next: "/embed/../admin" }));
+    expect(res.status).toBe(400);
+  });
+
   it("redirects to next without session when no token and no secret", async () => {
     // Override env to have no WIDGET_JWT_SECRET
     const { env } = await import("@/lib/env");
@@ -99,6 +104,14 @@ describe("GET /api/embed-auth", () => {
     expect(upsertWidgetUser).toHaveBeenCalledWith("alice@example.com", "Alice");
     const setCookie = res.headers.get("set-cookie") ?? "";
     expect(setCookie).toContain("encoded-session-token");
+  });
+
+  it("always encodes role as MEMBER regardless of DB user role", async () => {
+    const token = await makeToken({ sub: "admin-1", email: "admin@example.com" });
+    await GET(makeRequest({ next: "/embed/my-board", token }));
+    expect(vi.mocked(encode)).toHaveBeenCalledWith(
+      expect.objectContaining({ token: expect.objectContaining({ role: "MEMBER" }) }),
+    );
   });
 
   it("skips upsert when caller already has a session", async () => {

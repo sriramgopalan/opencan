@@ -1,18 +1,14 @@
 import { hkdf } from "@panva/hkdf";
 import { jwtDecrypt } from "jose";
 
-// Cookie name matches NextAuth's defaultCookies() — must match the salt used during encoding.
-const COOKIE_NAME =
-  process.env["NODE_ENV"] === "production"
-    ? "__Secure-authjs.session-token"
-    : "authjs.session-token";
+import { AUTH_COOKIE_NAME } from "@/lib/constants";
 
 async function getDerivedEncryptionKey(secret: string): Promise<Uint8Array> {
   return hkdf(
     "sha256",
     secret,
-    COOKIE_NAME,
-    `Auth.js Generated Encryption Key (${COOKIE_NAME})`,
+    AUTH_COOKIE_NAME,
+    `Auth.js Generated Encryption Key (${AUTH_COOKIE_NAME})`,
     64,
   );
 }

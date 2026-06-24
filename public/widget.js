@@ -10,6 +10,7 @@
   var token = script.dataset.token || "";
   var origin = new URL(script.src).origin;
 
+  var boardSlugEncoded = encodeURIComponent(boardSlug);
   var embedSrc;
   if (token) {
     embedSrc =
@@ -17,9 +18,9 @@
       "/api/embed-auth?token=" +
       encodeURIComponent(token) +
       "&next=" +
-      encodeURIComponent("/embed/" + boardSlug);
+      encodeURIComponent("/embed/" + boardSlugEncoded);
   } else {
-    embedSrc = origin + "/embed/" + boardSlug;
+    embedSrc = origin + "/embed/" + boardSlugEncoded;
   }
 
   // Inject styles
@@ -93,8 +94,10 @@
     }
   });
 
-  // Listen for close message from inside the iframe
+  // Listen for close message from inside the iframe.
+  // Validate origin to prevent other frames from closing the panel.
   window.addEventListener("message", function (event) {
+    if (event.origin !== origin) return;
     if (event.data && event.data.type === "opencan:close") {
       closePanel();
     }

@@ -4,12 +4,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getSessionFromJWT } from "@/auth-edge";
+import { AUTH_COOKIE_NAME } from "@/lib/constants";
 import { isBlocklisted } from "@/lib/session-blocklist";
-
-const COOKIE_NAME =
-  process.env["NODE_ENV"] === "production"
-    ? "__Secure-authjs.session-token"
-    : "authjs.session-token";
 
 export async function middleware(req: NextRequest) {
   const { nextUrl } = req;
@@ -39,7 +35,7 @@ export async function middleware(req: NextRequest) {
 
   if (isPublicPath) return NextResponse.next();
 
-  const token = req.cookies.get(COOKIE_NAME)?.value;
+  const token = req.cookies.get(AUTH_COOKIE_NAME)?.value;
   if (!token) {
     const signInUrl = new URL("/auth/signin", nextUrl);
     signInUrl.searchParams.set("callbackUrl", nextUrl.pathname);
@@ -55,7 +51,7 @@ export async function middleware(req: NextRequest) {
 
   if (await isBlocklisted(session.id)) {
     const response = NextResponse.redirect(new URL("/auth/signin", nextUrl));
-    response.cookies.delete(COOKIE_NAME);
+    response.cookies.delete(AUTH_COOKIE_NAME);
     return response;
   }
 
