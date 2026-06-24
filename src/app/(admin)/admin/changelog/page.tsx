@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadMoreLink } from "@/components/ui/LoadMoreLink";
 import { AppError } from "@/lib/errors";
-import { isEnabled } from "@/lib/flags";
 import { listAllChangelogEntries } from "@/server/repositories/changelog";
 
 export const metadata: Metadata = { title: "Changelog — Admin" };
@@ -20,8 +19,6 @@ const STATUS_PILL = {
 };
 
 export default async function AdminChangelogPage({ searchParams }: Props) {
-  if (!isEnabled("CHANGELOG")) notFound();
-
   const { cursor } = await searchParams;
   let items: Awaited<ReturnType<typeof listAllChangelogEntries>>["items"] = [];
   let nextCursor: string | null = null;

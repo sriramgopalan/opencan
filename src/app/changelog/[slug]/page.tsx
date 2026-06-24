@@ -4,7 +4,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CardLink } from "@/components/ui/CardLink";
-import { isEnabled } from "@/lib/flags";
 import { renderMarkdown } from "@/lib/markdown";
 import { getChangelogEntryBySlug } from "@/server/repositories/changelog";
 
@@ -13,7 +12,6 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  if (!isEnabled("CHANGELOG")) return { title: "Not found — OpenCan" };
   const { slug } = await params;
   const entry = await getChangelogEntryBySlug(slug);
   if (!entry) return { title: "Not found — OpenCan" };
@@ -21,8 +19,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ChangelogEntryPage({ params }: Props) {
-  if (!isEnabled("CHANGELOG")) notFound();
-
   const { slug } = await params;
   const entry = await getChangelogEntryBySlug(slug);
   if (!entry) notFound();

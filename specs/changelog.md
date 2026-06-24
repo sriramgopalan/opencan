@@ -10,7 +10,7 @@ Status: ACCEPTED
 | CL-02 | Body format | Markdown stored as `String @db.Text` — consistent with posts.md P-04; rendered via `marked` + `sanitize-html` at display time |
 | CL-03 | Linked posts | Optional array of Post IDs on each entry — `ChangelogEntryPost` join table with cascade delete on both sides |
 | CL-04 | Notification trigger | On `publish` only — not on save draft; prevents spam during editing |
-| CL-05 | Fan-out target | Users who voted on any linked post and have `notifyOnStatusChange = true` — reuses Gap 2 preference field; deduplicated by email |
+| CL-05 | Fan-out target | Users who voted on any linked post and have `notifyOnChangelog = true` — separate `Boolean @default(true)` field added to `User` (not a reuse of `notifyOnStatusChange`; allows users to opt-out of changelog notifications independently); deduplicated by email |
 | CL-06 | Draft/publish state | `publishedAt: DateTime?` — null = draft, set = published; no separate status enum needed |
 | CL-07 | Author | Admin only; stored as `authorId` FK to User; displayed on entry page |
 | CL-08 | Image attachments | Deferred — MinIO is in the stack but not wired; plain Markdown only in v1 |
@@ -67,7 +67,7 @@ Back-relations added to `User` and `Post` models.
 3. A `/changelog/[slug]` page renders the full Markdown body safely (no XSS)
 4. Linked posts are shown on the entry detail page
 5. Admins can view all entries (draft + published) at `/admin/changelog`
-6. When an entry is published (via the `publish` router procedure), voters of linked posts receive individual notification emails (respecting `notifyOnStatusChange`)
+6. When an entry is published (via the `publish` router procedure), voters of linked posts receive individual notification emails (respecting `notifyOnChangelog`)
 7. Duplicate email addresses in the voter fan-out are deduplicated before sending
 8. The CHANGELOG feature flag gates the public pages; admin page is always visible to admins
 9. Slug format is validated — must match `[a-z][a-z0-9-]*`, 3–50 characters, no `--` or trailing `-`

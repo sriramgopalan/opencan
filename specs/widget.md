@@ -27,6 +27,8 @@
 | W-16 | Replay attacks | Rely on 5-minute expiry. No `jti` one-time-use check in v1. |
 | W-17 | Session precedence | If user already has a valid NextAuth session, JWT auto-login is skipped (existing session wins) |
 | W-18 | `widget.js` location | `/public/widget.js` — plain JS, no framework dependency, served as a static file |
+| W-19 | Invalid `next` param | If `next` is missing or not a relative `/embed/` path, `/api/embed-auth` returns HTTP 400 (not a redirect) — prevents open-redirect abuse even in the error path |
+| W-20 | `widget.js` flag enforcement | When `WIDGET` is disabled, `/widget.js` still serves the full script (static file; no server-side gating possible), but the iframe `src` (`/embed/[boardSlug]`) returns 404, so the panel shows nothing. The spec intent in W-11 ("returns an empty no-op") is met at the embed-route level, not the script-file level. |
 
 ---
 
@@ -64,14 +66,14 @@ Schema change: none.
 
 | Route | Type | Auth | Purpose |
 |-------|------|------|---------|
-| `/embed/[boardId]` | RSC page | optional | Renders board in embed layout |
+| `/embed/[boardSlug]` | RSC page | optional | Renders board in embed layout |
 | `/api/embed-auth` | API route (GET) | none | Validates JWT, creates session, redirects |
 | `/widget.js` | static file | none | Embeddable script |
 
-### `/embed/[boardId]`
+### `/embed/[boardSlug]`
 
 - Uses `(embed)` layout group (no header, no footer).
-- Reads the board by slug or CUID; returns 404 if not found or not public.
+- Reads the board by slug; returns 404 if not found or not public.
 - Respects existing board visibility and post moderation settings.
 - Renders the post list + "New post" button using existing components.
 - When flag `WIDGET` is disabled, returns 404.

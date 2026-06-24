@@ -1,7 +1,6 @@
 import { createHmac } from "crypto";
 
 import { AppError } from "@/lib/errors";
-import { isEnabled } from "@/lib/flags";
 import { logger } from "@/lib/logger";
 import { getActiveWebhooksForEvent } from "@/server/repositories/webhook";
 import type { WebhookEndpoint, WebhookEvent, WebhookPayload } from "@/types/webhook";
@@ -77,8 +76,6 @@ async function deliver(webhook: WebhookEndpoint, body: string): Promise<void> {
 }
 
 export async function dispatchWebhook(event: WebhookEvent, data: unknown): Promise<void> {
-  if (!isEnabled("WEBHOOKS")) return;
-
   const webhooks = await getActiveWebhooksForEvent(event);
   if (webhooks.length === 0) return;
 

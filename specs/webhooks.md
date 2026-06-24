@@ -17,6 +17,7 @@ Status: ACCEPTED
 | W-09 | Event filtering | Each webhook stores an array of subscribed event types; deliver only if the event matches |
 | W-10 | Feature flag | Behind `WEBHOOKS` flag (ADR-005); dispatch is no-op when disabled |
 | W-11 | Privacy | Webhook URL may contain auth tokens — log only the domain, never the full URL |
+| W-12 | SSRF protection | Webhook URLs that resolve to private/loopback addresses (`localhost`, `127.*`, `10.*`, `172.16-31.*`, `192.168.*`, `169.254.*`, `::1`, `fe80:*`) are blocked at delivery time with a `VALIDATION_ERROR`; the block applies to both registered webhooks and the `test` procedure |
 
 ## Glossary
 

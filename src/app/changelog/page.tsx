@@ -1,12 +1,11 @@
 import { Rss } from "lucide-react";
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 import { ChangelogCard } from "@/components/changelog/ChangelogCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadMoreLink } from "@/components/ui/LoadMoreLink";
 import { AppError } from "@/lib/errors";
-import { isEnabled } from "@/lib/flags";
 import { listChangelogEntries } from "@/server/repositories/changelog";
 
 export const metadata: Metadata = { title: "Changelog — OpenCan" };
@@ -16,8 +15,6 @@ interface Props {
 }
 
 export default async function ChangelogIndexPage({ searchParams }: Props) {
-  if (!isEnabled("CHANGELOG")) notFound();
-
   const { cursor } = await searchParams;
   let items: Awaited<ReturnType<typeof listChangelogEntries>>["items"] = [];
   let nextCursor: string | null = null;

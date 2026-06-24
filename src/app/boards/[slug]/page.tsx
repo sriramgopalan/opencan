@@ -7,7 +7,6 @@ import { auth } from "@/auth";
 import { PostSearch } from "@/components/boards/PostSearch";
 import { PostCard } from "@/components/posts/PostCard";
 import { PostForm } from "@/components/posts/PostForm";
-import { isEnabled } from "@/lib/flags";
 import { getBoardBySlug, getBoardBySlugAdmin } from "@/server/repositories/board";
 import { listPosts, searchPosts } from "@/server/repositories/post";
 import type { PostListItem, PostStatus } from "@/types/post";
@@ -44,7 +43,7 @@ export default async function PublicBoardPage({ params, searchParams }: Props) {
   const board = isAdmin ? await getBoardBySlugAdmin(slug) : await getBoardBySlug(slug);
   if (!board) notFound();
 
-  const searchQuery = isEnabled("POST_SEARCH") && q && q.trim().length >= 2 ? q.trim() : undefined;
+  const searchQuery = q && q.trim().length >= 2 ? q.trim() : undefined;
 
   const validOrderBy =
     orderBy === "newest" || orderBy === "oldest" ? orderBy : ("votes" as const);
@@ -94,11 +93,9 @@ export default async function PublicBoardPage({ params, searchParams }: Props) {
         {board.description && <p className="mt-1 text-gray-500">{board.description}</p>}
       </header>
 
-      {isEnabled("POST_SEARCH") && (
-        <div className="mb-4">
-          <PostSearch boardSlug={slug} defaultValue={q} />
-        </div>
-      )}
+      <div className="mb-4">
+        <PostSearch boardSlug={slug} defaultValue={q} />
+      </div>
 
       {!searchQuery && (
         <>

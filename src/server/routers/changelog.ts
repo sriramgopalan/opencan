@@ -4,7 +4,6 @@ import { z } from "zod";
 import { sendChangelogNotification } from "@/lib/email";
 import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
-import { isEnabled } from "@/lib/flags";
 import { logger } from "@/lib/logger";
 import { isSlugFormatValid } from "@/lib/slug";
 import {
@@ -62,9 +61,6 @@ const UpdateInput = z
 
 export const changelogRouter = createTRPCRouter({
   list: publicProcedure.input(ListInput).query(async ({ input }) => {
-    if (!isEnabled("CHANGELOG")) {
-      return { items: [], nextCursor: null };
-    }
     try {
       return await listChangelogEntries({ cursor: input.cursor, limit: input.limit });
     } catch (e) {
@@ -82,12 +78,6 @@ export const changelogRouter = createTRPCRouter({
   get: publicProcedure
     .input(z.object({ slug: slugSchema }).strict())
     .query(async ({ input }) => {
-      if (!isEnabled("CHANGELOG")) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          cause: new AppError("NOT_FOUND", "Not found."),
-        });
-      }
       const entry = await getChangelogEntryBySlug(input.slug);
       if (!entry) {
         throw new TRPCError({

@@ -1,13 +1,12 @@
 import { Inbox } from "lucide-react";
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { MyPostCard } from "@/components/posts/MyPostCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadMoreLink } from "@/components/ui/LoadMoreLink";
 import { AppError } from "@/lib/errors";
-import { isEnabled } from "@/lib/flags";
 import { getPostsByAuthor } from "@/server/repositories/post";
 
 export const metadata: Metadata = {
@@ -20,8 +19,6 @@ interface Props {
 }
 
 export default async function MyPostsPage({ searchParams }: Props) {
-  if (!isEnabled("MY_POSTS")) notFound();
-
   const { cursor } = await searchParams;
   const session = await auth();
   const userId = session?.user?.id;

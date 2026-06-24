@@ -6,42 +6,6 @@ interface FlagDefinition {
 }
 
 const flags = {
-  ROADMAP_PAGE: {
-    description: "Public /roadmap page showing cross-board posts grouped by lifecycle status",
-    defaultValue: true,
-    owner: "sriramgopalan",
-    trackingIssue: "gap-1-roadmap",
-  },
-  STATUS_NOTIFICATIONS: {
-    description: "Email the post author when an admin changes its status",
-    defaultValue: true,
-    owner: "sriramgopalan",
-    trackingIssue: "gap-2-notifications",
-  },
-  MY_POSTS: {
-    description: "Authenticated users can view all posts they have submitted via /my-posts",
-    defaultValue: true,
-    owner: "sriramgopalan",
-    trackingIssue: "gap-3-my-posts",
-  },
-  POST_SEARCH: {
-    description: "Search input on board pages to filter posts by title",
-    defaultValue: true,
-    owner: "sriramgopalan",
-    trackingIssue: "gap-4-post-search",
-  },
-  CHANGELOG: {
-    description: "Public /changelog page with admin-authored dated entries and voter notification fan-out on publish",
-    defaultValue: true,
-    owner: "sriramgopalan",
-    trackingIssue: "gap-5-changelog",
-  },
-  WEBHOOKS: {
-    description: "Outbound webhook delivery of post and comment events to registered HTTP endpoints",
-    defaultValue: true,
-    owner: "sriramgopalan",
-    trackingIssue: "gap-6-webhooks",
-  },
   WIDGET: {
     description: "Embeddable iframe widget with optional JWT auto-login for host app integration",
     defaultValue: false,

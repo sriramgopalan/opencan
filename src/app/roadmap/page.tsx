@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import { RoadmapColumn } from "@/components/roadmap/RoadmapColumn";
-import { isEnabled } from "@/lib/flags";
 import { getRoadmapPosts } from "@/server/repositories/post";
 import type { PostStatus, RoadmapPost } from "@/types/post";
 
@@ -21,8 +19,6 @@ const ROADMAP_COLUMNS: { status: PostStatus; label: string }[] = [
 const PER_COLUMN_LIMIT = 20;
 
 export default async function RoadmapPage() {
-  if (!isEnabled("ROADMAP_PAGE")) notFound();
-
   const posts = await getRoadmapPosts();
 
   const byStatus = new Map<PostStatus, RoadmapPost[]>(

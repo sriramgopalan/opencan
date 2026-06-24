@@ -5,7 +5,6 @@ import { z } from "zod";
 import { sendStatusChangeEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
-import { isEnabled } from "@/lib/flags";
 import { logger } from "@/lib/logger";
 import { stripHtml } from "@/lib/sanitize";
 import { dispatchWebhook } from "@/lib/webhook";
@@ -297,7 +296,7 @@ export const postRouter = createTRPCRouter({
           cause: new AppError("NOT_FOUND", "Post not found."),
         });
       }
-      if (isEnabled("STATUS_NOTIFICATIONS") && post.status !== post.previousStatus) {
+      if (post.status !== post.previousStatus) {
         sendPostStatusNotification(input.id, post.previousStatus, post.status).catch(
           (err: unknown) => logger.error({ err, postId: input.id }, "status notification failed"),
         );
