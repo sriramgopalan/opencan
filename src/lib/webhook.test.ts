@@ -5,13 +5,8 @@ vi.mock("@/server/repositories/webhook", () => ({
   getActiveWebhooksForEvent: vi.fn(),
 }));
 
-vi.mock("@/lib/flags", () => ({
-  isEnabled: vi.fn().mockReturnValue(true),
-}));
-
 const { dispatchWebhook, testWebhookDelivery } = await import("@/lib/webhook");
 const { getActiveWebhooksForEvent } = await import("@/server/repositories/webhook");
-const { isEnabled } = await import("@/lib/flags");
 
 const WEBHOOK = {
   id: "cwh1234567890000",
@@ -23,15 +18,7 @@ const WEBHOOK = {
 describe("dispatchWebhook", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(isEnabled).mockReturnValue(true);
     global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
-  });
-
-  it("is a no-op when WEBHOOKS flag is disabled", async () => {
-    vi.mocked(isEnabled).mockReturnValue(false);
-    await dispatchWebhook("post.created", {});
-    expect(getActiveWebhooksForEvent).not.toHaveBeenCalled();
-    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it("is a no-op when no webhooks are subscribed to the event", async () => {

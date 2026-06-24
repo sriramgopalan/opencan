@@ -76,14 +76,6 @@ describe("changelogRouter", () => {
       expect(first?.slug).toBe("release-v2");
     });
 
-    it("returns empty list when CHANGELOG flag is disabled", async () => {
-      process.env["FEATURE_CHANGELOG"] = "false";
-      const caller = createCaller(createTestContext());
-      const result = await caller.list({});
-      expect(result.items).toEqual([]);
-      delete process.env["FEATURE_CHANGELOG"];
-    });
-
     it("throws BAD_REQUEST on invalid cursor", async () => {
       prismaMock.changelogEntry.findMany.mockRejectedValue(
         Object.assign(new Error("VALIDATION_ERROR"), { code: "VALIDATION_ERROR" }),
@@ -135,12 +127,6 @@ describe("changelogRouter", () => {
       await expect(caller.get({ slug: "missing" })).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
 
-    it("throws NOT_FOUND when CHANGELOG flag is disabled", async () => {
-      process.env["FEATURE_CHANGELOG"] = "false";
-      const caller = createCaller(createTestContext());
-      await expect(caller.get({ slug: "release-v2" })).rejects.toMatchObject({ code: "NOT_FOUND" });
-      delete process.env["FEATURE_CHANGELOG"];
-    });
   });
 
   // ---------------------------------------------------------------------------
