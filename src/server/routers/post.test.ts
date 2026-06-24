@@ -38,6 +38,7 @@ const { createTestContext, createAuthedContext, createAdminContext } = await imp
   "@/tests/context"
 );
 const { sendStatusChangeEmail } = await import("@/lib/email");
+const { dispatchWebhook } = await import("@/lib/webhook");
 
 const createCaller = createCallerFactory(postRouter);
 // jscpd:ignore-end
@@ -133,6 +134,9 @@ describe("postRouter", () => {
 
     it("creates post with PENDING status when postModerationEnabled", async () => {
       mockCreatePost({ postModerationEnabled: true });
+      prismaMock.post.create.mockResolvedValue(
+        { id: POST_ID, postNumber: 1, status: PostStatus.PENDING } as never,
+      );
       const caller = createCaller(createAuthedContext(USER_ID));
       await caller.create({ boardId: BOARD_ID, title: "Moderated post" });
       expect(prismaMock.post.create).toHaveBeenCalledWith(
@@ -140,6 +144,7 @@ describe("postRouter", () => {
           data: expect.objectContaining({ status: PostStatus.PENDING }),
         }),
       );
+      expect(dispatchWebhook).not.toHaveBeenCalled();
     });
 
     it("returns NOT_FOUND when board does not exist", async () => {

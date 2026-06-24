@@ -64,6 +64,20 @@ describe("dispatchWebhook", () => {
     await expect(dispatchWebhook("post.created", {})).resolves.toBeUndefined();
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
+
+  it("logs warning but does not throw on non-2xx response", async () => {
+    vi.mocked(getActiveWebhooksForEvent).mockResolvedValue([WEBHOOK]);
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 503 });
+    await expect(dispatchWebhook("post.created", {})).resolves.toBeUndefined();
+  });
+
+  it("does not call fetch for private IP webhook (10.x.x.x)", async () => {
+    vi.mocked(getActiveWebhooksForEvent).mockResolvedValue([
+      { ...WEBHOOK, url: "https://10.0.0.1/hook" },
+    ]);
+    await expect(dispatchWebhook("post.created", {})).resolves.toBeUndefined();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
 });
 
 describe("testWebhookDelivery", () => {
@@ -84,8 +98,22 @@ describe("testWebhookDelivery", () => {
     expect(result.error).toBe("Delivery failed");
   });
 
-  it("returns ok:false with fixed error string for private IP URL", async () => {
+  it("returns ok:false with fixed error string for private IP URL (192.168.x.x)", async () => {
     const result = await testWebhookDelivery({ ...WEBHOOK, url: "https://192.168.1.1/hook" });
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe("Delivery failed");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns ok:false for localhost URL", async () => {
+    const result = await testWebhookDelivery({ ...WEBHOOK, url: "https://localhost/hook" });
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe("Delivery failed");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns ok:false for loopback IP URL (127.0.0.1)", async () => {
+    const result = await testWebhookDelivery({ ...WEBHOOK, url: "https://127.0.0.1/hook" });
     expect(result.ok).toBe(false);
     expect(result.error).toBe("Delivery failed");
     expect(global.fetch).not.toHaveBeenCalled();

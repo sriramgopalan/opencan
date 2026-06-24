@@ -1,4 +1,5 @@
 // jscpd:ignore-start
+import { PostStatus } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,6 +38,7 @@ vi.mock("@/lib/webhook", () => ({
 const prismaMock = prisma as unknown as DeepMockProxy<PrismaClient>;
 
 const { commentRouter } = await import("@/server/routers/comment");
+const { dispatchWebhook } = await import("@/lib/webhook");
 const { createCallerFactory } = await import("@/server/trpc");
 const { createTestContext, createAuthedContext, createAdminContext } = await import(
   "@/tests/context"
@@ -212,6 +214,14 @@ describe("commentRouter", () => {
       const caller = createCaller(createAdminContext(ADMIN_ID));
       const result = await caller.create({ postId: POST_ID, body: "admin comment" });
       expect(result.id).toBe(COMMENT_ID);
+    });
+
+    it("does not dispatch webhook when post is PENDING", async () => {
+      const pendingPost = makeRow({ boardId: BOARD_ID, status: PostStatus.PENDING });
+      mockCreate({ whoCanPost: "ADMINS_ONLY" }, pendingPost);
+      const caller = createCaller(createAdminContext(ADMIN_ID));
+      await caller.create({ postId: POST_ID, body: "admin comment on pending" });
+      expect(dispatchWebhook).not.toHaveBeenCalled();
     });
 
     it("returns NOT_FOUND when postId does not exist", async () => {

@@ -24,16 +24,7 @@ const CreateWebhookInput = z
       .string()
       .url("Must be a valid URL.")
       .max(500, "URL must be 500 characters or fewer.")
-      .refine(
-        (u) => {
-          try {
-            return new URL(u).protocol === "https:";
-          } catch {
-            return false;
-          }
-        },
-        "Only HTTPS URLs are allowed.",
-      ),
+      .refine((u) => new URL(u).protocol === "https:", "Only HTTPS URLs are allowed."),
     events: z
       .array(z.enum(WEBHOOK_EVENTS as [string, ...string[]]))
       .min(1, "At least one event must be selected.")
