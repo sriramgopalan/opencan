@@ -8,8 +8,9 @@
  * Does NOT delete existing data first.
  */
 
-import { PrismaClient, type PostStatus } from "@prisma/client";
 import { createHash } from "crypto";
+
+import { PrismaClient, type PostStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -29,14 +30,18 @@ function fakeHash(email: string) {
 }
 
 function pick<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)]!;
+  const item = arr[Math.floor(Math.random() * arr.length)];
+  if (item === undefined) throw new Error("pick called on empty array");
+  return item;
 }
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j]!, a[i]!];
+    const tmp = a[i];
+    a[i] = a[j] as T;
+    a[j] = tmp as T;
   }
   return a;
 }
@@ -569,7 +574,8 @@ async function main() {
   // 3. Upsert boards (owned by admin)
   const boardMap = new Map<string, string>(); // slug → id
   for (let i = 0; i < BOARDS.length; i++) {
-    const b = BOARDS[i]!;
+    const b = BOARDS[i];
+    if (!b) continue;
     const board = await prisma.board.upsert({
       where: { slug: b.slug },
       update: {},
@@ -626,7 +632,7 @@ async function main() {
       data: {
         postNumber: counter,
         boardId,
-        authorId: userMap.get(authorEmail)!,
+        authorId: userMap.get(authorEmail) ?? admin.id,
         title: p.title,
         description: p.description,
         status: p.status,
@@ -657,7 +663,8 @@ async function main() {
 
     const shuffled = shuffle(memberEmails).slice(0, Math.min(targetVotes, memberEmails.length));
     for (const email of shuffled) {
-      const userId = userMap.get(email)!;
+      const userId = userMap.get(email);
+      if (!userId) continue;
       await prisma.vote.upsert({
         where: { postId_userId: { postId, userId } },
         update: {},
