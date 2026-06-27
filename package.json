@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:setup": "prisma db push && next dev",
+    "db:seed": "tsx prisma/seed.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
