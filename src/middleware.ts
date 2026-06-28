@@ -34,7 +34,9 @@ export async function middleware(req: NextRequest) {
     nextUrl.pathname === "/robots.txt" ||
     nextUrl.pathname === "/sitemap.xml" ||
     nextUrl.pathname === "/opencan-logo.png" ||
-    nextUrl.pathname === "/widget.js";
+    nextUrl.pathname === "/widget.js" ||
+    nextUrl.pathname === "/privacy" ||
+    nextUrl.pathname === "/terms";
 
   if (isPublicPath) return NextResponse.next();
 
