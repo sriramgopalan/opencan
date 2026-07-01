@@ -13,7 +13,7 @@ Status: ACCEPTED
 | CL-05 | Fan-out target | Users who voted on any linked post and have `notifyOnChangelog = true` — separate `Boolean @default(true)` field added to `User` (not a reuse of `notifyOnStatusChange`; allows users to opt-out of changelog notifications independently); deduplicated by email |
 | CL-06 | Draft/publish state | `publishedAt: DateTime?` — null = draft, set = published; no separate status enum needed |
 | CL-07 | Author | Admin only; stored as `authorId` FK to User; displayed on entry page |
-| CL-08 | Image attachments | Deferred — MinIO is in the stack but not wired; plain Markdown only in v1 |
+| CL-08 | Image attachments | Deferred — no object storage in v1; plain Markdown only |
 | CL-09 | Slug source | Admin-supplied slug validated by `isSlugFormatValid` (3–50 chars, `[a-z][a-z0-9-]*`); uniqueness enforced at DB level |
 | CL-10 | Entry list ordering | `publishedAt DESC` — most recent first; drafts excluded from public list |
 | CL-11 | Admin draft management | `/admin/changelog` RSC showing all entries (draft + published), sorted by `createdAt DESC` |

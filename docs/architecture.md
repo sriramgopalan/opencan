@@ -107,7 +107,6 @@ Single `docker compose` stack:
 | `app` | Custom Next.js build | Application server (port 3000) |
 | `postgres` | `postgres:16-alpine` | Primary database |
 | `redis` | `redis:7-alpine` | Rate limiting + session blocklist |
-| `minio` | `minio/minio` | Object storage (reserved for future use) |
 
 The `app` container runs `prisma migrate deploy` at startup before `next start`. All configuration is via environment variables — no config files are baked into the image.
 

@@ -59,7 +59,6 @@ OpenCan is a self-hosted feedback management platform — think Canny or UserJot
 | ORM | Prisma 5 |
 | Database | PostgreSQL 16 |
 | Cache / rate limiting / session blocklist | Redis 7 |
-| Object storage | MinIO (S3-compatible; provisioned, reserved for future file upload features) |
 | Auth | NextAuth v5 |
 | License | AGPL-3.0 |
 
@@ -103,7 +102,7 @@ Then open `.env` and fill in the values. See [Environment Variables](#environmen
 docker compose up -d
 ```
 
-This starts the app, Postgres, Redis, and MinIO. On first boot the app container runs `prisma migrate deploy` automatically.
+This starts the app, Postgres, and Redis. On first boot the app container runs `prisma migrate deploy` automatically.
 
 **4. Open the app**
 
@@ -254,7 +253,7 @@ cp .env.example .env
 **3. Start backing services**
 
 ```bash
-docker compose up -d postgres redis minio
+docker compose up -d postgres redis
 ```
 
 **4. Push the schema and start the dev server**
