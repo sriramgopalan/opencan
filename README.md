@@ -4,6 +4,8 @@
 
 **Open-source customer feedback management. Collect feedback, prioritize features, close the loop.**
 
+![Demo](./opencan-demo.gif)
+
 
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
