@@ -92,6 +92,22 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate
+      # `db push` below hides missing migrations; production uses `migrate deploy`.
+      # Fail if prisma/migrations does not reproduce schema.prisma. The only allowed
+      # difference is Post_title_trgm_idx (GIN/pg_trgm), which is migration-managed.
+      - name: Check migrations match schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE opencan_shadow"
+          DRIFT=$(npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url postgresql://postgres:postgres@localhost:5432/opencan_shadow \
+            --script | grep -vE '^\s*$|^--|^DROP INDEX "Post_title_trgm_idx";$' || true)
+          if [ -n "$DRIFT" ]; then
+            echo "::error::schema.prisma has changes with no migration. Run 'npx prisma migrate dev'. Missing SQL:"
+            echo "$DRIFT"
+            exit 1
+          fi
       - run: npx prisma db push
       - run: npm run test:coverage
       - uses: actions/upload-artifact@v4
