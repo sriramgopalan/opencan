@@ -21,7 +21,7 @@
 | AD-08 | Needs-attention trigger        | Show the panel only when there is ≥1 `PENDING` post; CTA links to `/admin/posts?status=PENDING` |
 | AD-09 | Data path                      | All data loaded server-side in the RSC page via repository functions; passed to widgets as props (no client fetch) |
 | AD-10 | Data model                     | No schema change — every figure is derived by aggregation over existing models |
-| AD-11 | Flag                           | Gated behind `ADMIN_DASHBOARD_V2` in `lib/flags.ts`; when off, the legacy stat-card layout renders. Removed after first stable release |
+| AD-11 | Flag                           | ~~Gated behind `ADMIN_DASHBOARD_V2` in `lib/flags.ts`; when off, the legacy stat-card layout renders.~~ flag removed after ship (ADR-005); the legacy layout was deleted with it |
 | AD-12 | Accessibility                  | The activity chart carries a visually-hidden data table; the SVG is `aria-hidden` (ADR-009 Decision 3) |
 | AD-13 | Empty state                    | Zero-data workspace renders a zero-filled chart and "—" leaderboards without error |
 
@@ -51,10 +51,10 @@ admin repository (ADR-003: Prisma only in repositories).
 
 ## Acceptance Criteria
 
-1. Given the `ADMIN_DASHBOARD_V2` flag is on, when an admin opens `/admin`, the
+1. When an admin opens `/admin`, the
    stat cards (Users, Boards, Posts, Votes, Comments) each show a 30-day delta with
    an up/down/flat indicator.
-2. Given the flag is off, `/admin` renders the legacy stat-card layout unchanged.
+2. ~~Given the flag is off, `/admin` renders the legacy stat-card layout unchanged.~~ Retired: flag removed after ship (ADR-005).
 3. The activity chart shows posts, votes, and comments per day for the last 30 days,
    with every day present (missing days rendered as zero).
 4. The chart is accompanied by a visually-hidden table containing the same daily

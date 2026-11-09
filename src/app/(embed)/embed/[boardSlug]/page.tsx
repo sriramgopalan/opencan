@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { PostCard } from "@/components/posts/PostCard";
 import { PostForm } from "@/components/posts/PostForm";
-import { isEnabled } from "@/lib/flags";
 import { getBoardBySlug } from "@/server/repositories/board";
 import { listPosts } from "@/server/repositories/post";
 
@@ -13,8 +12,6 @@ interface Props {
 }
 
 export default async function EmbedBoardPage({ params }: Props) {
-  if (!isEnabled("WIDGET")) notFound();
-
   const { boardSlug } = await params;
   const session = await auth();
   const callerId = session?.user?.id;

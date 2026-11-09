@@ -19,7 +19,7 @@
 | W-08 | Embed layout | New layout group `(embed)` — no main nav, no footer, no sidebar |
 | W-09 | Framing CSP | Embed routes set `Content-Security-Policy: frame-ancestors <WIDGET_ALLOWED_ORIGINS>`; default: `'none'` |
 | W-10 | X-Frame-Options | Omitted on embed routes (CSP `frame-ancestors` takes precedence in modern browsers) |
-| W-11 | Feature flag | Gated behind `WIDGET` flag; `/public/widget.js` returns an empty no-op script when disabled |
+| W-11 | Feature flag | ~~Gated behind `WIDGET` flag~~ — flag removed after ship (ADR-005). Embedding is controlled by configuration instead: framing is blocked unless `WIDGET_ALLOWED_ORIGINS` is set (W-09), and JWT auto-login is off unless `WIDGET_JWT_SECRET` is set (AC-12) |
 | W-12 | Widget button position | Fixed, bottom-right; `z-index: 2147483647`; 56 × 56 px |
 | W-13 | Widget button label | `aria-label="Open feedback"` / `aria-label="Close feedback"` toggled on state |
 | W-14 | Panel dimensions | 420 px wide, min 500 px tall / max 90 vh; above the button |
@@ -28,7 +28,7 @@
 | W-17 | Session precedence | If user already has a valid NextAuth session, JWT auto-login is skipped (existing session wins) |
 | W-18 | `widget.js` location | `/public/widget.js` — plain JS, no framework dependency, served as a static file |
 | W-19 | Invalid `next` param | If `next` is missing or not a relative `/embed/` path, `/api/embed-auth` returns HTTP 400 (not a redirect) — prevents open-redirect abuse even in the error path |
-| W-20 | `widget.js` flag enforcement | When `WIDGET` is disabled, `/widget.js` still serves the full script (static file; no server-side gating possible), but the iframe `src` (`/embed/[boardSlug]`) returns 404, so the panel shows nothing. The spec intent in W-11 ("returns an empty no-op") is met at the embed-route level, not the script-file level. |
+| W-20 | `widget.js` flag enforcement | Retired with the `WIDGET` flag. Historical: when `WIDGET` was disabled, `/widget.js` still serves the full script (static file; no server-side gating possible), but the iframe `src` (`/embed/[boardSlug]`) returns 404, so the panel shows nothing. The spec intent in W-11 ("returns an empty no-op") is met at the embed-route level, not the script-file level. |
 
 ---
 
@@ -76,7 +76,7 @@ Schema change: none.
 - Reads the board by slug; returns 404 if not found or not public.
 - Respects existing board visibility and post moderation settings.
 - Renders the post list + "New post" button using existing components.
-- When flag `WIDGET` is disabled, returns 404.
+- ~~When flag `WIDGET` is disabled, returns 404.~~ Retired: flag removed after ship (ADR-005).
 
 ### `/api/embed-auth?token=<jwt>&next=<path>`
 
@@ -97,8 +97,8 @@ Plain JavaScript (no bundler, no TypeScript). Behaviour:
 ```
 1. Locate the script tag via document.currentScript.
 2. Read data-board (required) and data-token (optional).
-3. If WIDGET flag is disabled (detected via a response header on the embed URL):
-   exit silently.
+3. ~~If WIDGET flag is disabled (detected via a response header on the embed URL):
+   exit silently.~~ Retired: flag removed after ship (ADR-005); never implemented in `widget.js`.
 4. Inject a <button> into document.body (fixed, bottom-right).
 5. On button click:
    a. If panel not yet created: create <iframe> with sandbox="allow-scripts
@@ -155,9 +155,9 @@ The widget button has a visible focus ring, `aria-label` that updates with state
 **AC-10 — Embed layout**  
 The `/embed/[boardId]` page renders without the main navigation bar and footer.
 
-**AC-11 — Feature flag**  
-When `WIDGET` flag is off, `/widget.js` returns an empty no-op script and
-`/embed/[boardId]` returns 404.
+**AC-11 — Feature flag** *(retired)*  
+~~When `WIDGET` flag is off, `/widget.js` returns an empty no-op script and
+`/embed/[boardId]` returns 404.~~ Retired: flag removed after ship (ADR-005).
 
 **AC-12 — No WIDGET_JWT_SECRET, no auto-login**  
 When `WIDGET_JWT_SECRET` is unset, `data-token` values are accepted by the script
