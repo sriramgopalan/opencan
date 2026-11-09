@@ -104,7 +104,9 @@ jobs:
   # ── 4. Playwright E2E ───────────────────────────────────────────────────────
   playwright:
     name: "Playwright E2E"
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04, which Playwright 1.48 cannot install
+    # browsers on. Unpin after upgrading @playwright/test to a release that supports it.
+    runs-on: ubuntu-24.04
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/opencan_test
       AUTH_SECRET: "ci-placeholder-not-a-real-secret"
@@ -357,3 +359,9 @@ jobs:
             echo "| 9  | Lighthouse CI (perf ≥ 90, a11y ≥ 95) | $(result '${{ needs.lighthouse.result }}') |"
             echo "| 10 | Gitleaks secret detection | $(result '${{ needs.gitleaks.result }}') |"
           } >> "$GITHUB_STEP_SUMMARY"
+
+          # Make the summary job itself fail so a single required check reflects all gates.
+          if [ "$overall" != "✅ All gates passed" ]; then
+            echo "::error::$overall"
+            exit 1
+          fi
