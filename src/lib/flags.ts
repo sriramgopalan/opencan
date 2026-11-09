@@ -1,3 +1,16 @@
+// ADR-005: every in-progress feature is gated here until it ships; the flag and
+// all of its guards are deleted once the feature is stable. Add a flag like:
+//
+//   MY_FEATURE: {
+//     description: "What the feature does",
+//     defaultValue: false,
+//     owner: "sriramgopalan",
+//     trackingIssue: "gap-8-my-feature",
+//   },
+//
+// and gate server-side with `isEnabled("MY_FEATURE")`. Override per deployment
+// with FEATURE_MY_FEATURE=true|false.
+
 interface FlagDefinition {
   readonly description: string;
   readonly defaultValue: boolean;
@@ -5,26 +18,19 @@ interface FlagDefinition {
   readonly trackingIssue: string;
 }
 
-const flags = {
-  WIDGET: {
-    description: "Embeddable iframe widget with optional JWT auto-login for host app integration",
-    defaultValue: false,
-    owner: "sriramgopalan",
-    trackingIssue: "gap-7-widget",
-  },
-  ADMIN_DASHBOARD_V2: {
-    description: "Richer admin overview: stat-card deltas, activity chart, leaderboards, needs-attention",
-    defaultValue: false,
-    owner: "sriramgopalan",
-    trackingIssue: "admin-dashboard-v2",
-  },
-} as const satisfies Record<string, FlagDefinition>;
+const flags = {} as const satisfies Record<string, FlagDefinition>;
 
 type FeatureFlag = keyof typeof flags;
 
-export function isEnabled(flag: FeatureFlag): boolean {
-  const override = process.env[`FEATURE_${flag}`];
+/** Resolves a flag: FEATURE_<name> env override ("true"/"false") wins, else the default. */
+export function evaluateFlag(name: string, defaultValue: boolean): boolean {
+  const override = process.env[`FEATURE_${name}`];
   if (override === "true") return true;
   if (override === "false") return false;
-  return flags[flag].defaultValue;
+  return defaultValue;
+}
+
+export function isEnabled(flag: FeatureFlag): boolean {
+  const definition: FlagDefinition = flags[flag];
+  return evaluateFlag(flag, definition.defaultValue);
 }
