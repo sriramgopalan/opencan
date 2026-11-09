@@ -15,6 +15,7 @@ const {
   getBoardBySlug,
   getBoardBySlugAdmin,
   getBoardById,
+  countBoardsOwnedBy,
   updateBoard,
   deleteBoard,
   listBoards,
@@ -146,6 +147,17 @@ describe("board repository", () => {
     it("returns null when not found", async () => {
       prismaMock.board.findUnique.mockResolvedValue(null);
       expect(await getBoardById("missing")).toBeNull();
+    });
+  });
+
+  describe("countBoardsOwnedBy", () => {
+    it("returns the number of boards owned by the user", async () => {
+      prismaMock.board.count.mockResolvedValue(3);
+
+      const result = await countBoardsOwnedBy("user-1");
+
+      expect(result).toBe(3);
+      expect(prismaMock.board.count).toHaveBeenCalledWith({ where: { ownerId: "user-1" } });
     });
   });
 

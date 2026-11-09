@@ -191,6 +191,10 @@ export async function getBoardById(id: string): Promise<AdminBoard | null> {
   return toAdminBoard(row);
 }
 
+export async function countBoardsOwnedBy(ownerId: string): Promise<number> {
+  return prisma.board.count({ where: { ownerId } });
+}
+
 export async function listBoards(opts: ListBoardsOptions = {}): Promise<BoardListResult> {
   const {
     adminView = false,

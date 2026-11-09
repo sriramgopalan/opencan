@@ -15,7 +15,7 @@ Status: ACCEPTED
 | W-07 | Max webhooks | 10 per instance; configurable via `WEBHOOK_MAX` env var |
 | W-08 | Admin management | `adminProcedure` procedures: `create`, `list`, `delete`, `test`; read-only page at `/admin/settings/webhooks` |
 | W-09 | Event filtering | Each webhook stores an array of subscribed event types; deliver only if the event matches |
-| W-10 | Feature flag | Behind `WEBHOOKS` flag (ADR-005); dispatch is no-op when disabled |
+| W-10 | Feature flag | ~~Behind `WEBHOOKS` flag~~ — flag removed after ship (PR #52, ADR-005); dispatch is always on when active webhooks exist |
 | W-11 | Privacy | Webhook URL may contain auth tokens — log only the domain, never the full URL |
 | W-12 | SSRF protection | Webhook URLs that resolve to private/loopback addresses (`localhost`, `127.*`, `10.*`, `172.16-31.*`, `192.168.*`, `169.254.*`, `::1`, `fe80:*`) are blocked at delivery time with a `VALIDATION_ERROR`; the block applies to both registered webhooks and the `test` procedure |
 
@@ -49,7 +49,7 @@ model Webhook {
 4. Given a post is created and a webhook subscribes to `post.created`, a signed POST is delivered within the request lifecycle.
 5. Given an admin changes a post status and a webhook subscribes to `post.status_changed`, a signed POST is delivered.
 6. Given a comment is created and a webhook subscribes to `comment.created`, a signed POST is delivered.
-7. Given the `WEBHOOKS` flag is disabled, no dispatch occurs.
+7. ~~Given the `WEBHOOKS` flag is disabled, no dispatch occurs.~~ Retired: flag removed after ship (PR #52). Given no active webhook subscribes to an event, no dispatch occurs.
 8. Given a webhook endpoint times out, the mutation still succeeds and the failure is logged.
 9. Given the instance has 10 active webhooks, creating an 11th returns CONFLICT.
 10. Given the `test` procedure is called, a test payload is POSTed and success/failure is returned synchronously (not fire-and-forget).

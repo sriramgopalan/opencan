@@ -157,9 +157,6 @@ describe("authRouter", () => {
       failedLoginCount: 0,
       lockedUntil: null,
     } as never);
-    prismaMock.session.findMany.mockResolvedValue(
-      (activeSessionCount > 0 ? [{ sessionToken: "tok-1" }] : []) as never,
-    );
     redisMock.smembers.mockResolvedValue(activeSessionCount > 0 ? ["tok-1"] : []);
     redisMock.del.mockResolvedValue(activeSessionCount);
     prismaMock.$transaction.mockResolvedValue([{ count: activeSessionCount }, {}] as never);

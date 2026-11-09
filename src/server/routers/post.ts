@@ -1,4 +1,3 @@
-import { PostStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -28,6 +27,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "@/server/trpc";
+import type { PostStatus } from "@/types/post";
 import type { PostCreatedData, PostStatusChangedData } from "@/types/webhook";
 
 // ---------------------------------------------------------------------------
@@ -111,7 +111,7 @@ export const postRouter = createTRPCRouter({
 
     enforceWhoCanPost(whoCanPost, viewer, !!input.guestName, "posts.create");
 
-    const initialStatus: PostStatus = postModerationEnabled ? PostStatus.PENDING : PostStatus.OPEN;
+    const initialStatus: PostStatus = postModerationEnabled ? "PENDING" : "OPEN";
 
     try {
       const result = await createPost({
@@ -122,7 +122,7 @@ export const postRouter = createTRPCRouter({
         description: input.description ? stripHtml(input.description) : null,
         initialStatus,
       });
-      if (result.status !== PostStatus.PENDING) {
+      if (result.status !== "PENDING") {
         const postCreatedPayload: PostCreatedData = {
           id: result.id,
           postNumber: result.postNumber,

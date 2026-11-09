@@ -42,6 +42,31 @@
     ],
     "import/no-duplicates": "error"
   },
+  "overrides": [
+    {
+      "files": ["src/**/*.ts", "src/**/*.tsx"],
+      "rules": {
+        "no-console": "error"
+      }
+    },
+    {
+      "files": ["src/**/*.ts", "src/**/*.tsx"],
+      "excludedFiles": ["**/*.test.ts", "**/*.test.tsx", "src/tests/**", "**/__mocks__/**"],
+      "rules": {
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "NewExpression[callee.name='Error']",
+            "message": "ADR-002: throw AppError from @/lib/errors instead of new Error()."
+          },
+          {
+            "selector": "CallExpression[callee.name='Error']",
+            "message": "ADR-002: throw AppError from @/lib/errors instead of Error()."
+          }
+        ]
+      }
+    }
+  ],
   "settings": {
     "import/resolver": {
       "typescript": { "alwaysTryTypes": true }

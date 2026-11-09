@@ -198,7 +198,12 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm audit --audit-level=critical
+      # Quality strategy §4.8: zero high/critical CVEs in production dependencies.
+      - name: Production deps (high+)
+        run: npm audit --omit=dev --audit-level=high
+      # Dev-only tooling: block on critical; accepted highs are tracked in .audit-exceptions.md.
+      - name: All deps (critical)
+        run: npm audit --audit-level=critical
 
   # ── 7. jscpd ────────────────────────────────────────────────────────────────
   jscpd:
@@ -369,7 +374,7 @@ jobs:
             echo "| 3  | Vitest + Coverage ≥ 90 % | $(result '${{ needs.test.result }}') |"
             echo "| 4  | Playwright E2E | $(result '${{ needs.playwright.result }}') |"
             echo "| 5  | Semgrep OWASP | $(result '${{ needs.semgrep.result }}') |"
-            echo "| 6  | npm audit (critical only) | $(result '${{ needs.audit.result }}') |"
+            echo "| 6  | npm audit (prod high+, all critical) | $(result '${{ needs.audit.result }}') |"
             echo "| 7  | jscpd (≥ 10 lines) | $(result '${{ needs.jscpd.result }}') |"
             echo "| 8  | dependency-cruiser architecture | $(result '${{ needs.dep-cruiser.result }}') |"
             echo "| 9  | Lighthouse CI (perf ≥ 90, a11y ≥ 95) | $(result '${{ needs.lighthouse.result }}') |"
