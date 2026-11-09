@@ -11,7 +11,6 @@ import {
 import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { prisma } from "@/server/db";
 import { invalidateAllUserSessionCaches } from "@/server/repositories/session";
 import {
   createUser,
@@ -21,6 +20,7 @@ import {
   getUserWithPasswordHash,
   incrementFailedLoginCount,
   lockAccount,
+  replacePasswordAndRevokeSessions,
   resetFailedLoginCount,
   setNotificationPreferences,
   updatePasswordHash,
@@ -118,15 +118,8 @@ export const authRouter = createTRPCRouter({
       const newHash = await hash(input.newPassword);
 
       // Invalidate all sessions (including current) before updating password
-      const sessions = await prisma.session.findMany({
-        where: { userId },
-        select: { sessionToken: true },
-      });
       await invalidateAllUserSessionCaches(userId);
-      await prisma.$transaction([
-        prisma.session.deleteMany({ where: { userId } }),
-        prisma.user.update({ where: { id: userId }, data: { passwordHash: newHash } }),
-      ]);
+      await replacePasswordAndRevokeSessions(userId, newHash);
 
       logger.info({ ip: ctx.ip, userId }, "password changed");
 
@@ -136,7 +129,6 @@ export const authRouter = createTRPCRouter({
         },
       );
 
-      void sessions; // sessions variable used above for Redis cleanup
       return { success: true as const };
     }),
 

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { AppError } from "@/lib/errors";
+
 const schema = z
   .object({
     DATABASE_URL: z.string().min(1),
@@ -52,7 +54,8 @@ function getEnv(): Env {
     if (process.env["NEXT_PHASE"] === "phase-production-build") {
       return { LOG_LEVEL: "silent", NODE_ENV: "production" } as unknown as Env;
     }
-    throw new Error(
+    throw new AppError(
+      "INTERNAL_ERROR",
       `Invalid environment variables:\n${JSON.stringify(
         result.error.flatten().fieldErrors,
         null,

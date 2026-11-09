@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { logger } from "@/lib/logger";
 import { addToBlocklist, removeFromBlocklist } from "@/lib/session-blocklist";
-import { prisma } from "@/server/db";
 import { getWorkspaceStats, listAdminUsers, listAllPosts } from "@/server/repositories/admin";
+import { countBoardsOwnedBy } from "@/server/repositories/board";
 import { invalidateAllUserSessionCaches } from "@/server/repositories/session";
 import {
   adminDeleteUser,
@@ -234,7 +234,7 @@ export const adminRouter = createTRPCRouter({
         });
       }
 
-      const boardCount = await prisma.board.count({ where: { ownerId: input.userId } });
+      const boardCount = await countBoardsOwnedBy(input.userId);
       if (boardCount > 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",

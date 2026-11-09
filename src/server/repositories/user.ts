@@ -167,6 +167,17 @@ export async function unsuspendUser(
   }) as Promise<{ id: string; suspendedAt: null }>;
 }
 
+// Atomically replaces the password hash and deletes every DB session row for the user.
+export async function replacePasswordAndRevokeSessions(
+  userId: string,
+  passwordHash: string,
+): Promise<void> {
+  await prisma.$transaction([
+    prisma.session.deleteMany({ where: { userId } }),
+    prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
+  ]);
+}
+
 export async function deleteUserAccount(userId: string, email: string): Promise<void> {
   await prisma.$transaction([
     prisma.comment.updateMany({

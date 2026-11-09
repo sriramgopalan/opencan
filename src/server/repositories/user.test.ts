@@ -27,6 +27,7 @@ const {
   suspendUser,
   unsuspendUser,
   deleteUserAccount,
+  replacePasswordAndRevokeSessions,
 } = await import("@/server/repositories/user");
 
 const SAFE_USER = {
@@ -227,6 +228,21 @@ describe("user repository", () => {
       expect(prismaMock.user.update).toHaveBeenCalledWith(
         expect.objectContaining({ data: { suspendedAt: null } }),
       );
+    });
+  });
+
+  describe("replacePasswordAndRevokeSessions", () => {
+    it("deletes sessions and updates the password hash in one transaction", async () => {
+      prismaMock.$transaction.mockResolvedValue([]);
+
+      await replacePasswordAndRevokeSessions("user-1", "new-hash");
+
+      expect(prismaMock.$transaction).toHaveBeenCalledOnce();
+      expect(prismaMock.session.deleteMany).toHaveBeenCalledWith({ where: { userId: "user-1" } });
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: "user-1" },
+        data: { passwordHash: "new-hash" },
+      });
     });
   });
 

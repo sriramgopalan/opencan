@@ -1,4 +1,3 @@
-import { PostStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -128,7 +127,7 @@ export const commentRouter = createTRPCRouter({
         guestName: viewer.callerId ? null : (input.guestName ?? null),
         body: input.body,
       });
-      if (post.status !== PostStatus.PENDING) {
+      if (post.status !== "PENDING") {
         const commentCreatedPayload: CommentCreatedData = {
           id: created.id,
           postId: created.postId,

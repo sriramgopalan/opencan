@@ -40,7 +40,7 @@ tRPC procedures are structurally typed by auth level:
 | `protectedProcedure` | Any signed-in user |
 | `adminProcedure` | Users with `role = ADMIN` |
 
-There is no ad-hoc role checking inside procedure bodies. If the wrong procedure type is used, CI fails (dependency-cruiser enforces this).
+There is no ad-hoc role checking inside procedure bodies. This is enforced by convention and the post-merge security review — no static gate can tell whether a procedure *should* have been `protectedProcedure`.
 
 **Redis** handles two things auth-adjacent: rate limiting on mutations (via `ioredis`) and a session blocklist so revoked sessions — on suspension, role change, or deletion — are invalidated immediately without waiting for JWT expiry.
 
@@ -132,17 +132,20 @@ End-to-end browser tests against the running Next.js app. Currently a smoke suit
 Static security analysis. Catches SQL injection patterns (unsafe `$queryRaw` string concatenation), hardcoded secrets, SSRF vectors, and other OWASP Top 10 issues at the source level before code is deployed.
 
 ### 6. npm audit
-Checks all dependencies against the npm vulnerability advisory database. Fails on any high or critical severity CVE. Run with `--audit-level=high`.
+Checks dependencies against the npm vulnerability advisory database in two steps: production dependencies fail on any high or critical CVE (`npm audit --omit=dev --audit-level=high`); all dependencies, including dev tooling, fail on any critical CVE (`npm audit --audit-level=critical`). Accepted dev-only highs are recorded in `.audit-exceptions.md`.
 
 ### 7. jscpd
 Copy-paste detection at `--threshold 0` (zero tolerance) for blocks of 10+ lines. Prevents duplication across the codebase and keeps shared logic in shared modules.
 
 ### 8. dependency-cruiser
 Enforces architectural rules as code:
-- Prisma client only imported inside `src/server/repositories/`
-- tRPC routers only import from repositories and lib
-- Client components (`"use client"`) do not import server-only modules
+- `src/server/db.ts` (the Prisma client) is imported only by `src/server/repositories/` — sole exception `src/auth.ts`, which passes it to NextAuth's `PrismaAdapter` (ADR-003)
+- Outside repositories, `@prisma/client` may only be imported with `import type` (ADR-003)
+- `src/server/` never imports `src/app/` or `src/components/`
+- `src/components/` never imports `src/server/` (ADR-001) or `src/lib/flags.ts` (ADR-005)
 - No circular dependencies
+
+Test files, `src/tests/`, and `__mocks__/` are exempt from the Prisma rules. Pages in `src/app/` (Server Components) may import repositories directly, per ADR-001.
 
 Violations fail the build. Rules defined in `.dependency-cruiser.cjs`.
 
