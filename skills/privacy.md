@@ -69,7 +69,8 @@ transaction commits.
 
 Log user activity by `userId` only. Never log PII.
 
-Banned log fields (will trip the gitleaks/Semgrep rules — fix the root cause,
+Banned log fields (enforced by an ESLint `no-restricted-syntax` rule on `logger.*`
+call literals, and redacted by `lib/logger.ts` as a backstop — fix the root cause,
 not the rule):
 
 | Field name | Why banned |

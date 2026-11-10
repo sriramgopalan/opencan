@@ -41,4 +41,18 @@ describe("getSessionFromJWT", () => {
   it("returns null for a malformed token", async () => {
     expect(await getSessionFromJWT("not-a-jwt")).toBeNull();
   });
+
+  // Fail-closed guard: HKDF rejects an empty key, so key derivation throws and the
+  // catch returns null. Locks that in against a future "?? default" style change.
+  it("rejects even a validly signed token when AUTH_SECRET is unset", async () => {
+    const jwt = await encodeSession({ sub: "user-1", role: "ADMIN" });
+    const original = process.env["AUTH_SECRET"];
+    delete process.env["AUTH_SECRET"];
+
+    try {
+      expect(await getSessionFromJWT(jwt)).toBeNull();
+    } finally {
+      process.env["AUTH_SECRET"] = original;
+    }
+  });
 });

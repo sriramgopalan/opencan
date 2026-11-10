@@ -62,6 +62,10 @@
           {
             "selector": "CallExpression[callee.name='Error']",
             "message": "ADR-002: throw AppError from @/lib/errors instead of Error()."
+          },
+          {
+            "selector": "CallExpression[callee.object.name='logger'] > ObjectExpression > Property[key.name=/^(email|name|ip|ipAddress|userAgent|password|passwordHash|token|secret|apiKey|to)$/]",
+            "message": "privacy.md: banned log field (PII/secret). Log userId or a non-identifying id instead."
           }
         ]
       }

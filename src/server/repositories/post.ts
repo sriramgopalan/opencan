@@ -1,8 +1,5 @@
-import { createHmac } from "crypto";
-
 import { Prisma, PostStatus } from "@prisma/client";
 
-import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { encodeCursor, decodeCursor, sliceAndCursor } from "@/lib/pagination";
@@ -23,10 +20,6 @@ import type {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-export function hashIp(ip: string): string {
-  return createHmac("sha256", env.IP_HASH_SECRET).update(ip).digest("hex");
-}
 
 function guestVoteKey(boardId: string, postId: string, hashedIp: string): string {
   return `vote:guest:${boardId}:${postId}:${hashedIp}`;

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { issueEmailVerification } from "@/lib/auth-helpers";
 import { AppError } from "@/lib/errors";
+import { hashIp } from "@/lib/ip-hash";
 import { logger } from "@/lib/logger";
 import { rateLimit } from "@/lib/rate-limit";
 import { createUser, getUserByEmail } from "@/server/repositories/user";
@@ -28,7 +29,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   const ip = getIp(req);
 
   try {
-    await rateLimit(`auth:ip:${ip}`, { max: 10, windowSeconds: 3600 });
+    await rateLimit(`auth:ip:${hashIp(ip)}`, { max: 10, windowSeconds: 3600 });
 
     const body: unknown = await req.json();
     const parsed = registerSchema.safeParse(body);
@@ -57,7 +58,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     await issueEmailVerification(email, user.id);
 
-    logger.info({ ip, userId: user.id }, "user registered");
+    logger.info({ userId: user.id }, "user registered");
     return NextResponse.json({ userId: user.id }, { status: 201 });
   } catch (err) {
     if (err instanceof AppError && err.code === "RATE_LIMITED") {
@@ -66,7 +67,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         { status: 429 },
       );
     }
-    logger.error({ err, ip }, "registration failed");
+    logger.error({ err }, "registration failed");
     return NextResponse.json(
       { error: "INTERNAL_ERROR", message: "An unexpected error occurred" },
       { status: 500 },

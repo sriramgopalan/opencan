@@ -10,6 +10,7 @@ import {
 } from "@/lib/email";
 import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
+import { hashIp } from "@/lib/ip-hash";
 import { logger } from "@/lib/logger";
 import { invalidateAllUserSessionCaches } from "@/server/repositories/session";
 import {
@@ -51,7 +52,7 @@ export const authRouter = createTRPCRouter({
     .output(z.object({ sent: z.literal(true) }))
     .mutation(async ({ input, ctx }) => {
       // IP rate limit: 10 requests per hour
-      await applyRateLimit(`auth:ip:${ctx.ip}`, 10, 3600);
+      await applyRateLimit(`auth:ip:${hashIp(ctx.ip)}`, 10, 3600);
       // Per-email rate limit: 5 per 10 minutes
       await applyRateLimit(`auth:email:${input.email}`, 5, 600);
 
@@ -79,7 +80,7 @@ export const authRouter = createTRPCRouter({
         logger.error({ err, userId: user?.id }, "magic link email failed");
       });
 
-      logger.info({ ip: ctx.ip }, "magic link requested");
+      logger.info({ userId: user?.id }, "magic link requested");
       return { sent: true as const };
     }),
 
@@ -121,7 +122,7 @@ export const authRouter = createTRPCRouter({
       await invalidateAllUserSessionCaches(userId);
       await replacePasswordAndRevokeSessions(userId, newHash);
 
-      logger.info({ ip: ctx.ip, userId }, "password changed");
+      logger.info({ userId }, "password changed");
 
       sendPasswordChangedEmail(ctx.session.user.email ?? "").catch(
         (err: unknown) => {

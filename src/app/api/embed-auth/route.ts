@@ -73,7 +73,7 @@ export async function GET(request: Request) {
     });
     return response;
   } catch (err) {
-    logger.error({ err, email: claims.email }, "embed-auth: user upsert failed");
+    logger.error({ err }, "embed-auth: user upsert failed");
     return NextResponse.redirect(redirectUrl);
   }
 }

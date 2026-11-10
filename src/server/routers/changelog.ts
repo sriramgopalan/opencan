@@ -174,7 +174,7 @@ export const changelogRouter = createTRPCRouter({
             Promise.allSettled(
               emails.map((to) =>
                 sendChangelogNotification(to, entryTitle, entryUrl).catch((err) =>
-                  logger.error({ err, to }, "changelog.publish: email failed"),
+                  logger.error({ err, entryId }, "changelog.publish: email failed"),
                 ),
               ),
             ),

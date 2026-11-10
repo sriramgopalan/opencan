@@ -120,7 +120,7 @@ All 10 gates must pass before any PR can merge to main.
 TypeScript compiler with `noEmit`. Catches type errors across the entire codebase before any code runs. Configured in `tsconfig.json` with strict mode.
 
 ### 2. ESLint (0 warnings)
-Linting with zero tolerance — warnings are treated as errors. Enforces: import order, no `console.*`, no `new Error()` in `src/`, no unused variables, React rules, and accessibility lint rules. Config in `.eslintrc`.
+Linting with zero tolerance — warnings are treated as errors. Enforces: import order, no `console.*`, no `new Error()` in `src/`, no banned PII/secret fields (`email`, `ip`, `token`, …) in `logger.*` calls (privacy.md), no unused variables, React rules, and accessibility lint rules. Config in `.eslintrc`.
 
 ### 3. Vitest ≥90% branch coverage
 Unit and integration tests with a 90% branch coverage floor. Repository tests run against a mocked Prisma client (`vitest-mock-extended`). Router tests use a tRPC caller factory. Redis-dependent mutation tests require the `redis:7-alpine` CI service. Config in `vitest.config.ts`.
