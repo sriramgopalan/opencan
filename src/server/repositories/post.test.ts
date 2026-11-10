@@ -1,6 +1,7 @@
 import { PostStatus } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { hashIp } from "@/lib/ip-hash";
 import { redis } from "@/lib/redis";
 import { prisma } from "@/server/db";
 import { BASE_POST, BOARD_ID, makeRow, POST_ID, USER_ID } from "@/tests/helpers/post-fixtures";
@@ -29,7 +30,6 @@ const {
   getRoadmapPosts,
   searchPosts,
   getSimilarPosts,
-  hashIp,
   listPosts,
   setPostPin,
   setPostStatus,
@@ -41,26 +41,6 @@ describe("post repository", () => {
   afterEach(() => {
     mockReset(prismaMock);
     vi.clearAllMocks();
-  });
-
-  // ---------------------------------------------------------------------------
-  // hashIp
-  // ---------------------------------------------------------------------------
-
-  describe("hashIp", () => {
-    it("returns a 64-char hex string", () => {
-      const h = hashIp("1.2.3.4");
-      expect(h).toHaveLength(64);
-      expect(h).toMatch(/^[0-9a-f]+$/);
-    });
-
-    it("produces same hash for same input", () => {
-      expect(hashIp("10.0.0.1")).toBe(hashIp("10.0.0.1"));
-    });
-
-    it("produces different hashes for different IPs", () => {
-      expect(hashIp("1.1.1.1")).not.toBe(hashIp("2.2.2.2"));
-    });
   });
 
   // ---------------------------------------------------------------------------

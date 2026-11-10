@@ -2,9 +2,9 @@ import { TRPCError } from "@trpc/server";
 
 import type { BoardSettings } from "@/lib/board-settings";
 import { AppError } from "@/lib/errors";
+import { hashIp } from "@/lib/ip-hash";
 import { logger } from "@/lib/logger";
 import { getBoardById } from "@/server/repositories/board";
-import { hashIp } from "@/server/repositories/post";
 import type { PostViewer } from "@/types/post";
 
 export function getViewer(

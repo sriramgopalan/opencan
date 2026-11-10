@@ -66,7 +66,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (newCount >= MAX_FAILED_LOGINS) {
             const until = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000);
             await lockAccount(user.id, until);
-            logger.info({ ip: "credentials-flow" }, "account locked");
+            logger.info({ userId: user.id }, "account locked");
           }
           return null;
         }

@@ -98,11 +98,14 @@ jobs:
       - name: Check migrations match schema
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE opencan_shadow"
-          DRIFT=$(npx prisma migrate diff \
+          # Run prisma as its own command so a Prisma error fails the step (`bash -e`).
+          # Piping it straight into grep would discard its exit status (fail-open).
+          npx prisma migrate diff \
             --from-migrations prisma/migrations \
             --to-schema-datamodel prisma/schema.prisma \
             --shadow-database-url postgresql://postgres:postgres@localhost:5432/opencan_shadow \
-            --script | grep -vE '^\s*$|^--|^DROP INDEX "Post_title_trgm_idx";$' || true)
+            --script > "$RUNNER_TEMP/drift.sql"
+          DRIFT=$(grep -vE '^\s*$|^--|^DROP INDEX "Post_title_trgm_idx";$' "$RUNNER_TEMP/drift.sql" || true)
           if [ -n "$DRIFT" ]; then
             echo "::error::schema.prisma has changes with no migration. Run 'npx prisma migrate dev'. Missing SQL:"
             echo "$DRIFT"
