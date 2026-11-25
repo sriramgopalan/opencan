@@ -15,6 +15,20 @@
 **[Live Demo →](https://demo.opencan.dev)**
 
 ---
+ 
+## Built with RightCoding
+ 
+OpenCan was built with AI assistance using **RightCoding**, a quality-first method for building software with AI. RightCoding is the opposite of vibecoding. AI makes the first build cheap, so the real work moves to quality and trust, and every quality gate is mandatory.
+ 
+Every feature in this repo went through four stages:
+ 
+1. **Specify.** A written spec in [`/specs`](./specs) with numbered, testable acceptance criteria, edge cases, the API contract, security requirements and a test plan. Each decision gets an ID. Coding starts only once the spec is accepted and no decisions are open.
+2. **Generate.** The AI agent reads the spec, the project's [skill files](./skills) and the [architecture decision records](./docs/adr). It names what it will reuse and what it is unsure of before it writes code. Code, types and tests ship together.
+3. **Review.** Separate review passes check spec adherence, security (OWASP Top 10 plus project rules), and duplication and surface area.
+4. **Gate.** CI blocks the merge unless all ten gates pass: TypeScript, ESLint (zero warnings), Vitest (≥90% coverage), Playwright E2E, Semgrep OWASP, npm audit, duplicate-code detection, architecture rules, Lighthouse CI (performance ≥90, accessibility ≥95) and secret detection. See [`ci.yml`](./.github/workflows/ci.yml).
+OpenCan is the first reference implementation of RightCoding. The method itself works with any stack. **To learn more, visit [rightcoding.sgopalan.com](https://rightcoding.sgopalan.com).**
+ 
+---
 
 ## What is OpenCan?
 
